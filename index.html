@@ -1,0 +1,1093 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Todo Board</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230A0A0A'/%3E%3Cpath d='M9 16.5l4.2 4.2L23 11' fill='none' stroke='%23fff' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+*,*::before,*::after{box-sizing:border-box}
+
+:root{
+  --bg:#FFFFFF; --surface:#FAFAFA; --surface-2:#F4F4F5;
+  --ink:#0A0A0A; --ink-2:#52525B; --ink-3:#71717A; --ink-faint:#8A8A93;
+  --border:#E4E4E7; --border-strong:#18181B;
+  --r:8px; --r-sm:6px;
+  --s-1:8px; --s-2:12px; --s-3:16px; --s-4:24px; --s-5:32px;
+  --dur:180ms; --ease:cubic-bezier(.2,.8,.2,1);
+  color-scheme:light;
+}
+
+html,body{height:100%}
+body{
+  margin:0;
+  font:400 14px/1.5 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  color:var(--ink); background:var(--bg);
+  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+}
+.mono{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-numeric:tabular-nums}
+button{font:inherit;color:inherit;touch-action:manipulation}
+:focus-visible{outline:2px solid var(--border-strong);outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+
+/* ---------- shell ---------- */
+.app{display:flex;flex-direction:column;height:100dvh}
+
+.topbar{
+  display:flex;align-items:center;gap:var(--s-3);flex-wrap:wrap;
+  padding:var(--s-2) var(--s-3);
+  border-bottom:1px solid var(--border);background:var(--bg);
+  position:sticky;top:0;z-index:30;
+}
+.spacer{flex:1 1 auto}
+.wl{
+  margin:0 var(--s-1) 0 0;font-weight:700;white-space:nowrap;
+  font-size:clamp(20px,1.8vw,26px);letter-spacing:-.025em;
+}
+.iconbtn{
+  display:grid;place-items:center;width:36px;height:36px;
+  background:var(--bg);border:1px solid var(--border);border-radius:var(--r-sm);
+  cursor:pointer;transition:border-color var(--dur) var(--ease),background var(--dur) var(--ease);
+}
+.iconbtn:hover{border-color:var(--ink-3);background:var(--surface)}
+.iconbtn svg{width:15px;height:15px;stroke:var(--ink);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.ghost{
+  background:var(--bg);border:1px solid var(--border);border-radius:999px;
+  padding:8px 16px;font-size:12px;font-weight:600;cursor:pointer;min-height:36px;
+  transition:border-color var(--dur) var(--ease),background var(--dur) var(--ease);
+}
+.ghost:hover{border-color:var(--border-strong);background:var(--surface)}
+.cta{
+  display:inline-flex;align-items:center;gap:8px;
+  background:var(--ink);color:var(--bg);border:1px solid var(--ink);border-radius:999px;
+  padding:8px 10px 8px 14px;font-size:12px;font-weight:600;cursor:pointer;min-height:36px;
+  transition:opacity var(--dur) var(--ease);
+}
+.cta:hover{opacity:.85}
+.cta svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;flex:none}
+.kbd{
+  font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;line-height:1;
+  background:rgba(255,255,255,.2);border-radius:4px;padding:3px 5px;
+}
+@media (pointer:coarse){.iconbtn,.cta{min-width:44px;min-height:44px}.ghost{min-height:44px}}
+
+/* ---------- board ---------- */
+.board-wrap{flex:1 1 auto;overflow:auto;min-height:0}
+.grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));min-height:100%}
+.col{display:flex;flex-direction:column;min-width:0;position:relative}
+.col + .col{border-left:1px solid var(--border)}
+.col.is-today{background:var(--surface);box-shadow:inset 1.5px 0 0 var(--border-strong),inset -1.5px 0 0 var(--border-strong)}
+
+.colhead{
+  position:sticky;top:0;z-index:20;background:inherit;text-align:center;
+  padding:var(--s-3) var(--s-2) calc(var(--s-2) + 2px);
+}
+.col:not(.is-today) .colhead{background:var(--bg)}
+.dnum{font-size:clamp(28px,2.6vw,40px);font-weight:400;line-height:1;letter-spacing:-.035em;color:var(--ink-faint);display:block}
+.dname{font-size:12px;color:var(--ink-3);margin-top:5px;display:block}
+.col.is-today .dnum{color:var(--ink);font-weight:600}
+.col.is-today .dname{color:var(--ink-2);font-weight:600}
+/* the day's progress is the header rule itself: black = done, grey = in progress */
+.prog{position:absolute;left:0;right:0;bottom:0;height:3px;display:flex;background:var(--border)}
+.prog i{background:var(--ink);transition:width var(--dur) var(--ease)}
+.prog b{background:var(--ink-3);transition:width var(--dur) var(--ease)}
+
+.colbody{
+  flex:1 1 auto;display:flex;flex-direction:column;gap:6px;
+  padding:var(--s-1);min-height:140px;
+}
+
+.card{
+  background:var(--bg);border:1px solid var(--border);border-radius:var(--r);
+  padding:10px;cursor:pointer;
+  transition:border-color var(--dur) var(--ease),box-shadow var(--dur) var(--ease);
+}
+/* only a week change is a new set of cards worth animating in; editing in place is not */
+.grid.is-fresh .card{animation:cardIn 220ms var(--ease) both;animation-delay:calc(var(--i,0) * 30ms)}
+.card:hover{border-color:var(--ink-3);box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.card.is-done{background:var(--surface-2)}
+.card.is-done .card-title{text-decoration:line-through;color:var(--ink-2)}
+.card.is-dragging{opacity:.4;border-color:var(--border-strong)}
+.card-row{display:flex;align-items:flex-start;gap:8px}
+.card-title{
+  font-size:13px;font-weight:500;line-height:1.35;min-width:0;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+}
+.card-meta{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px 6px;margin-top:6px;padding-left:26px}
+.card-meta > *{min-width:0}
+.time{font-size:11px;color:var(--ink-2);white-space:nowrap}
+.time.is-none{color:var(--ink-3)}
+
+.st-btn{
+  position:relative;flex:0 0 auto;display:grid;place-items:center;
+  width:19px;height:19px;padding:0;margin-top:1px;
+  background:transparent;border:0;cursor:pointer;
+  transition:color var(--dur) var(--ease),transform var(--dur) var(--ease);
+}
+.st-btn::after{content:'';position:absolute;inset:-13px}   /* 45px hit area */
+.st-btn:active{transform:scale(.9)}
+.st-btn[data-status="todo"]{color:var(--ink-3)}
+.st-btn[data-status="doing"],.st-btn[data-status="done"]{color:var(--ink)}
+.st-btn:hover{color:var(--ink)}
+
+/* one icon set; --knock is the colour showing through the tick, so it flips on dark pills */
+.st-icon{width:19px;height:19px;display:block}
+.st-icon .ring{fill:none;stroke:currentColor;stroke-width:1.75}
+.st-icon .half{fill:currentColor;stroke:none}
+.st-icon .disc{fill:currentColor;stroke:currentColor;stroke-width:1.75}
+.st-icon .tick{fill:none;stroke:var(--knock,var(--bg));stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round}
+
+.empty{margin:var(--s-1) 2px;font-size:12px;color:var(--ink-3)}
+
+.addrow{
+  display:flex;align-items:center;gap:7px;margin-top:2px;
+  border:1px dashed var(--border);border-radius:var(--r-sm);
+  padding:0 9px;min-height:42px;background:var(--bg);
+}
+.addrow:focus-within{border-style:solid;border-color:var(--border-strong)}
+.addrow svg{flex:none;width:12px;height:12px;stroke:var(--ink-3);fill:none;stroke-width:2;stroke-linecap:round}
+.addinput{
+  width:100%;min-width:0;min-height:42px;border:0;outline:0;background:transparent;
+  font:inherit;font-size:12px;color:var(--ink);
+}
+.addinput::placeholder{color:var(--ink-3)}
+
+.dropline{height:0;border-top:2px solid var(--border-strong);border-radius:2px;margin:1px 0}
+.col.is-drop .colbody{outline:1.5px dashed var(--border-strong);outline-offset:-4px;border-radius:var(--r);background:var(--surface)}
+
+/* ---------- detail sheet ---------- */
+.sheet{
+  border:0;padding:0;margin:0 0 0 auto;
+  width:min(460px,100vw);max-width:100vw;height:100dvh;max-height:100dvh;
+  background:var(--bg);color:var(--ink);border-left:1px solid var(--border);
+  animation:sheetIn 220ms var(--ease);
+}
+.sheet::backdrop{background:rgba(0,0,0,.45)}
+.sheet-scroll{height:100%;overflow-y:auto;padding:var(--s-4)}
+.sheet-top{display:flex;align-items:center;justify-content:space-between;gap:var(--s-2)}
+.sheet-top{flex-wrap:wrap}
+.seg{display:inline-flex;gap:2px;border:1px solid var(--border);border-radius:999px;padding:3px}
+.seg-btn{
+  display:inline-flex;align-items:center;gap:6px;
+  background:transparent;border:0;border-radius:999px;
+  padding:6px 11px;font-size:12px;font-weight:600;color:var(--ink-2);cursor:pointer;
+  min-height:34px;white-space:nowrap;
+  transition:background var(--dur) var(--ease),color var(--dur) var(--ease);
+}
+.seg-btn:hover{background:var(--surface-2);color:var(--ink)}
+.seg-btn.is-on{background:var(--ink);color:var(--bg);--knock:var(--ink)}
+.seg-btn.is-on:hover{background:var(--ink);color:var(--bg)}
+@media (pointer:coarse){.seg-btn{min-height:44px}}
+.sheet-h1{margin:var(--s-3) 0 4px}
+.title-input{
+  width:100%;padding:0 0 2px;border:0;outline:0;background:transparent;
+  font:inherit;font-size:26px;font-weight:700;letter-spacing:-.025em;line-height:1.2;color:var(--ink);
+}
+.title-input:focus{box-shadow:0 1.5px 0 var(--border-strong)}
+.meta{font-size:13px;color:var(--ink-2);margin:0}
+.fields{display:flex;gap:var(--s-3);flex-wrap:wrap;margin-top:var(--s-4)}
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.lbl{font-size:12px;font-weight:600;color:var(--ink-2)}
+.inp{
+  border:1px solid var(--border);border-radius:var(--r-sm);padding:9px 10px;
+  font:inherit;font-size:14px;min-height:44px;background:var(--bg);color:var(--ink);
+}
+.rule{border:0;border-top:1px dashed var(--border);margin:var(--s-4) 0}
+.sec-title{font-size:15px;font-weight:700;margin:0 0 var(--s-2)}
+.ta{
+  width:100%;min-height:92px;resize:vertical;
+  border:1px solid var(--border);border-radius:var(--r-sm);padding:10px;
+  font:inherit;font-size:14px;line-height:1.6;background:var(--bg);color:var(--ink);
+}
+.xbtn{
+  position:relative;display:grid;place-items:center;width:26px;height:26px;flex:none;
+  background:transparent;border:1px solid transparent;border-radius:var(--r-sm);cursor:pointer;
+}
+.xbtn::after{content:'';position:absolute;inset:-9px}
+.xbtn:hover{border-color:var(--border);background:var(--surface)}
+.xbtn svg{width:11px;height:11px;stroke:var(--ink-2);fill:none;stroke-width:2;stroke-linecap:round}
+.danger{margin-top:var(--s-5);padding-top:var(--s-3);border-top:1px solid var(--border)}
+.btn{
+  border:1px solid var(--border-strong);background:var(--bg);color:var(--ink);
+  border-radius:var(--r-sm);padding:10px 14px;font-weight:600;font-size:13px;
+  cursor:pointer;min-height:44px;
+  transition:background var(--dur) var(--ease),color var(--dur) var(--ease);
+}
+.btn:hover{background:var(--surface)}
+.btn.is-armed{background:var(--ink);color:var(--bg)}
+.hint{font-size:11px;color:var(--ink-3);margin:var(--s-1) 0 0}
+
+/* ---------- toast ---------- */
+.toast{
+  position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:40;
+  display:none;align-items:center;gap:var(--s-3);
+  background:var(--ink);color:var(--bg);border-radius:999px;
+  padding:9px 9px 9px 18px;font-size:13px;
+  box-shadow:0 8px 24px rgba(0,0,0,.24);
+}
+.toast.is-on{display:flex;animation:toastIn 200ms var(--ease)}
+.toast button{
+  background:var(--bg);color:var(--ink);border:0;border-radius:999px;
+  padding:7px 14px;font-weight:600;font-size:12px;cursor:pointer;min-height:36px;
+}
+
+/* ---------- selftest ---------- */
+.st{
+  position:fixed;inset:auto 12px 12px 12px;z-index:50;display:none;
+  background:var(--bg);border:1.5px solid var(--border-strong);border-radius:var(--r);
+  padding:var(--s-2) var(--s-3);font-family:'JetBrains Mono',monospace;font-size:12px;
+  line-height:1.7;white-space:pre;max-height:55vh;overflow:auto;
+  box-shadow:0 8px 30px rgba(0,0,0,.14);
+}
+.st.is-on{display:block}
+
+@keyframes cardIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes sheetIn{from{opacity:0;transform:translateX(18px)}to{opacity:1;transform:none}}
+@keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(8px)}to{opacity:1;transform:translateX(-50%)}}
+
+/* ---------- responsive ---------- */
+@media (min-width:768px) and (max-width:1023px){.grid{min-width:820px}}
+@media (max-width:900px){.kbd{display:none}}
+@media (max-width:640px){
+  .topbar{row-gap:var(--s-2)}
+  .wl{flex:1 1 100%}                 /* title takes its own row instead of ragged wrapping */
+  .cta{padding:8px;justify-content:center;min-width:40px}
+  .cta .cta-txt{display:none}
+}
+@media (max-width:767px){
+  .board-wrap{overflow:hidden;display:flex}
+  .grid{
+    display:flex;flex:1 1 auto;min-height:0;
+    overflow-x:auto;overflow-y:hidden;
+    scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;
+  }
+  .col{min-width:88%;scroll-snap-align:start;overflow-y:auto}
+  .col + .col{border-left:0}
+  .col.is-today{box-shadow:inset 0 -2px 0 var(--border-strong)}
+  .topbar{gap:var(--s-2);padding:var(--s-2)}
+  .wl{font-size:19px}
+  .sheet{width:100vw;border-left:0}
+  .sheet-scroll{padding:var(--s-3)}
+  .title-input{font-size:22px}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none !important;transition:none !important}
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header class="topbar">
+    <h1 class="wl" id="weeklabel">&nbsp;</h1>
+    <button class="iconbtn" id="prev" aria-label="Previous day">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>
+    </button>
+    <button class="iconbtn" id="next" aria-label="Next day">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+    </button>
+    <span class="spacer"></span>
+    <button class="ghost" id="today">Today</button>
+    <button class="cta" id="new-task" type="button" aria-label="New task" aria-keyshortcuts="N">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+      <span class="cta-txt">New task</span>
+      <kbd class="kbd" aria-hidden="true">N</kbd>
+    </button>
+  </header>
+
+  <main class="board-wrap">
+    <div class="grid" id="grid"></div>
+  </main>
+</div>
+
+<dialog class="sheet" id="sheet" aria-labelledby="sheet-title-h">
+  <div class="sheet-scroll">
+    <div class="sheet-top">
+      <div class="seg" id="s-status" role="radiogroup" aria-label="Task status"></div>
+      <button class="xbtn" id="s-close" aria-label="Close task details">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <h2 class="sheet-h1" id="sheet-title-h">
+      <input class="title-input" id="s-title" aria-label="Task title" placeholder="Untitled task">
+    </h2>
+    <p class="meta" id="s-created"></p>
+
+    <div class="fields">
+      <div class="field">
+        <label class="lbl" for="s-date">Due to</label>
+        <input class="inp mono" type="date" id="s-date">
+      </div>
+      <div class="field">
+        <label class="lbl" for="s-time">Time <span style="font-weight:400;color:var(--ink-3)">(optional)</span></label>
+        <input class="inp mono" type="time" id="s-time">
+      </div>
+    </div>
+
+    <hr class="rule">
+
+    <h3 class="sec-title">Description</h3>
+    <textarea class="ta" id="s-desc" placeholder="Add more detail…"></textarea>
+
+    <div class="danger">
+      <button class="btn" id="s-delete">Delete task</button>
+      <p class="hint">Deleting offers a 4-second undo.</p>
+    </div>
+  </div>
+</dialog>
+
+<p class="sr" id="live" role="status" aria-live="polite"></p>
+
+<div class="toast" id="toast" role="status" aria-live="polite">
+  <span id="toast-msg"></span>
+  <button id="toast-act" type="button">Undo</button>
+</div>
+
+<pre class="st" id="st" aria-live="polite"></pre>
+
+<script>
+'use strict';
+
+/* ---------------- date helpers (local-time only; never toISOString) ---------------- */
+const pad = n => String(n).padStart(2, '0');
+const dateKey = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const parseKey = k => { const [y, m, d] = k.split('-').map(Number); return new Date(y, m - 1, d); };
+const addDays = (d, n) => { const t = new Date(d.getFullYear(), d.getMonth(), d.getDate()); t.setDate(t.getDate() + n); return t; };
+
+const isWeekend = d => d.getDay() === 0 || d.getDay() === 6;
+const nextWeekday = d => { let n = addDays(d,  1); while (isWeekend(n)) n = addDays(n,  1); return n; };
+const prevWeekday = d => { let n = addDays(d, -1); while (isWeekend(n)) n = addDays(n, -1); return n; };
+
+/* Sat/Sun have no column, so a task dated there would silently vanish.
+   Everything that sets a date routes through here and lands on the next working day. */
+function snapToWeekday(key) {
+  const d = parseKey(key);
+  if (d.getDay() === 6) return dateKey(addDays(d, 2));   // Sat -> Mon
+  if (d.getDay() === 0) return dateKey(addDays(d, 1));   // Sun -> Mon
+  return key;
+}
+
+/* `count` consecutive weekdays starting at `from`, snapped forward off a weekend */
+function weekdayWindow(from, count) {
+  let d = parseKey(snapToWeekday(dateKey(from)));
+  const out = [];
+  while (out.length < count) { out.push(d); d = nextWeekday(d); }
+  return out;
+}
+
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DAYS = ['mon','tue','wed','thu','fri','sat','sun'];
+
+function rangeLabel(a, b) {
+  const m = d => MONTHS[d.getMonth()].slice(0, 3);
+  if (a.getFullYear() !== b.getFullYear())
+    return `${a.getDate()} ${m(a)} ${a.getFullYear()} – ${b.getDate()} ${m(b)} ${b.getFullYear()}`;
+  if (a.getMonth() !== b.getMonth())
+    return `${a.getDate()} ${m(a)} – ${b.getDate()} ${m(b)} ${a.getFullYear()}`;
+  return `${a.getDate()} – ${b.getDate()} ${m(a)} ${a.getFullYear()}`;
+}
+
+function fmtTime(hhmm) {
+  const [h, m] = hhmm.split(':').map(Number);
+  const ap = h < 12 ? 'AM' : 'PM', h12 = h % 12 === 0 ? 12 : h % 12;
+  return m === 0 ? `${h12} ${ap}` : `${h12}:${pad(m)} ${ap}`;
+}
+const fmtLong = d => `${d.getDate()} ${MONTHS[d.getMonth()].slice(0, 3)} ${d.getFullYear()}`;
+const fmtDayName = d => ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][d.getDay()];
+
+/* ---------------- sorting: timed ascending first, untimed after, by order ---------------- */
+function sortColumn(list) {
+  return list.slice().sort((a, b) => {
+    const at = a.time ? 0 : 1, bt = b.time ? 0 : 1;
+    if (at !== bt) return at - bt;
+    if (at === 0 && a.time !== b.time) return a.time < b.time ? -1 : 1;
+    return (a.order - b.order) || (a.createdAt - b.createdAt);
+  });
+}
+
+/* three statuses, each a distinct shape so they read without relying on tone */
+const STATUS = {
+  todo:  { label: 'Todo',        next: 'doing' },
+  doing: { label: 'In Progress', next: 'done'  },
+  done:  { label: 'Done',        next: 'todo'  }
+};
+const STATUS_ORDER = ['todo', 'doing', 'done'];
+const STATUS_ICON = {
+  todo:  '<svg class="st-icon" viewBox="0 0 20 20" aria-hidden="true"><circle class="ring" cx="10" cy="10" r="7.2"/></svg>',
+  doing: '<svg class="st-icon" viewBox="0 0 20 20" aria-hidden="true"><circle class="ring" cx="10" cy="10" r="7.2"/><path class="half" d="M10 5.75a4.25 4.25 0 0 1 0 8.5z"/></svg>',
+  done:  '<svg class="st-icon" viewBox="0 0 20 20" aria-hidden="true"><circle class="disc" cx="10" cy="10" r="7.2"/><path class="tick" d="M6.5 10.2l2.4 2.4 4.6-4.9"/></svg>'
+};
+
+/* ---------------- storage ---------------- */
+let loadFailed = false;   // a silent empty load is a bug, not a state; the selftest asserts on it
+const KEY = 'todo-board-v1';
+
+function normalize(t, i) {
+  t = t || {};
+  return {
+    id: t && t.id ? String(t.id) : 't' + Date.now() + i,
+    title: typeof t.title === 'string' ? t.title : '',
+    date: snapToWeekday(/^\d{4}-\d{2}-\d{2}$/.test(t.date) ? t.date : dateKey(new Date())),
+    time: /^\d{2}:\d{2}$/.test(t.time) ? t.time : null,
+    status: STATUS[t.status] ? t.status : (t.done === true ? 'done' : 'todo'),
+    desc: typeof t.desc === 'string' ? t.desc : '',
+    order: Number.isFinite(t.order) ? t.order : i,
+    createdAt: Number.isFinite(t.createdAt) ? t.createdAt : Date.now()
+  };
+}
+
+function load() {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (raw === null) return seed();
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.map(normalize) : [];
+  } catch (err) {
+    loadFailed = true;
+    console.warn('Todo Board: could not read storage —', err);
+    return [];
+  }
+}
+
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify(tasks)); }
+  catch (err) {
+    console.warn('Todo Board: could not write storage —', err);
+    showToast('Changes are not being saved — storage unavailable', null);
+  }
+}
+
+function seed() {                                 // first run only; delete this to start blank
+  const win = weekdayWindow(new Date(), 5);       // d is an index into the opening window
+  const raw = [
+    { title: 'Standup',                    d: 0, time: '09:00' },
+    { title: 'Design review',              d: 0, time: '10:00', status: 'doing' },
+    { title: 'Pay the studio invoice',     d: 0 },
+    { title: 'Design a new dashboard for client', d: 1, time: '10:30', status: 'doing',
+      desc: 'Three states to cover: empty, loading, and populated with live data.' },
+    { title: 'Lunch break',                d: 1, time: '12:00', status: 'done' },
+    { title: 'Write the release notes',    d: 2, time: '13:00' },
+    { title: 'Book offsite tickets',       d: 3, time: '08:45' },
+    { title: 'Prepare HTML & CSS handoff', d: 4 }
+  ];
+  return raw.map((r, i) => normalize({
+    title: r.title, date: dateKey(win[r.d]), time: r.time || null,
+    status: r.status || 'todo', desc: r.desc || '',
+    order: i, createdAt: Date.now() + i
+  }, i));
+}
+
+/* ---------------- state ---------------- */
+let tasks = load();
+let anchor = new Date();
+let currentId = null;
+let pendingFocus = null;
+let snapToToday = true;              // land on today's column in the mobile day view
+let hasRendered = false;             // only the first paint animates the cards in
+let undoBuf = null;
+let undoTimer = null;
+
+const $ = (s, r = document) => r.querySelector(s);
+const grid = $('#grid');
+const sheet = $('#sheet');
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const byId = id => tasks.find(t => t.id === id);
+const inColumn = key => sortColumn(tasks.filter(t => t.date === key));
+
+const ICON = {
+  plus: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>'
+};
+
+
+/* ---------------- render ---------------- */
+function render() {
+  const days = weekdayWindow(anchor, 5);           // today first, weekends skipped
+  $('#weeklabel').textContent = rangeLabel(days[0], days[4]);
+
+  // a day step keeps 4 of 5 columns identical, so only the very first paint animates
+  grid.classList.toggle('is-fresh', !hasRendered);
+  hasRendered = true;
+
+  const keepScroll = grid.scrollLeft;              // innerHTML wipes it; the mobile day view depends on it
+  grid.innerHTML = days.map(colHTML).join('');
+  grid.scrollLeft = keepScroll;
+
+  if (snapToToday) {
+    snapToToday = false;
+    const col = grid.querySelector('.col.is-today');
+    if (col) col.scrollIntoView({ inline: 'start', block: 'nearest' });
+  }
+  restoreFocus();
+}
+
+function progressOf(list) {
+  const total = list.length;
+  const done = list.filter(t => t.status === 'done').length;
+  const doing = list.filter(t => t.status === 'doing').length;
+  return {
+    total, done, doing,
+    donePct:  total ? Math.round((done  / total) * 100) : 0,
+    doingPct: total ? Math.round((doing / total) * 100) : 0
+  };
+}
+
+function progressLabel(p) {
+  if (!p.total) return '';
+  const bits = [`${p.done} of ${p.total} done`];
+  if (p.doing) bits.push(`${p.doing} in progress`);
+  return bits.join(', ');
+}
+
+function colHTML(d) {
+  const key = dateKey(d);
+  const isToday = key === dateKey(new Date());
+  const list = inColumn(key);
+  const p = progressOf(list);
+
+  const cards = list.length
+    ? list.map(cardHTML).join('')
+    : '<p class="empty">Nothing scheduled</p>';
+
+  return `<section class="col${isToday ? ' is-today' : ''}" data-date="${key}" aria-label="${fmtDayName(d)} ${fmtLong(d)}${isToday ? ', today' : ''}">
+    <header class="colhead">
+      <span class="dnum mono">${pad(d.getDate())}</span>
+      <span class="dname">${DAYS[(d.getDay() + 6) % 7]}</span>
+      ${p.total
+        ? `<div class="prog" role="progressbar" aria-valuemin="0" aria-valuemax="100"
+                aria-valuenow="${p.donePct}" aria-label="${fmtDayName(d)}: ${progressLabel(p)}"
+                title="${progressLabel(p)}"><i style="width:${p.donePct}%"></i><b style="width:${p.doingPct}%"></b></div>`
+        : '<div class="prog" aria-hidden="true"></div>'}
+    </header>
+    <div class="colbody">
+      ${cards}
+      <div class="addrow">
+        ${ICON.plus}
+        <input class="addinput" data-add="${key}" placeholder="Add a task …"
+               aria-label="Add a task on ${fmtDayName(d)} ${fmtLong(d)}">
+      </div>
+    </div>
+  </section>`;
+}
+
+function cardHTML(t, i) {
+  const st = STATUS[t.status], nextSt = STATUS[st.next];
+  const label = `${t.title || 'Untitled task'}, ${t.time ? fmtTime(t.time) : 'no time set'}, ${st.label}. Open details.`;
+  return `<article class="card${t.status === 'done' ? ' is-done' : ''}" draggable="true" tabindex="0"
+      data-id="${t.id}" style="--i:${i}" role="button" aria-label="${esc(label)}">
+    <div class="card-row">
+      <button class="st-btn" type="button" data-act="status" data-status="${t.status}"
+              title="${st.label} — click to set ${nextSt.label}"
+              aria-label="Status: ${st.label}. Activate to set ${nextSt.label}.">${STATUS_ICON[t.status]}</button>
+      <span class="card-title" title="${esc(t.title)}">${esc(t.title) || '<span style="color:var(--ink-3)">Untitled task</span>'}</span>
+    </div>
+    <div class="card-meta">
+      <span class="time mono${t.time ? '' : ' is-none'}">${t.time ? fmtTime(t.time) : 'no time'}</span>
+    </div>
+  </article>`;
+}
+
+function restoreFocus() {
+  if (!pendingFocus) return;
+  const p = pendingFocus; pendingFocus = null;
+  const el = p.type === 'add'
+    ? grid.querySelector(`[data-add="${p.date}"]`)
+    : grid.querySelector(`.card[data-id="${p.id}"]`);
+  if (el) el.focus({ preventScroll: true });
+}
+
+/* ---------------- mutations ---------------- */
+function nextOrder(key) {
+  const list = tasks.filter(t => t.date === key);
+  return list.length ? Math.max(...list.map(t => t.order)) + 1 : 0;
+}
+
+function renumber(key) {
+  sortColumn(tasks.filter(t => t.date === key)).forEach((t, i) => { t.order = i; });
+}
+
+function addTask(key, title) {
+  const t = normalize({ title: title.trim(), date: key, order: nextOrder(key), createdAt: Date.now() }, tasks.length);
+  tasks.push(t);
+  save();
+  pendingFocus = { type: 'add', date: key };
+  render();
+  return t;
+}
+
+function setStatus(id, status) {
+  const t = byId(id);
+  if (!t || !STATUS[status]) return;
+  t.status = status;
+  save();
+  pendingFocus = { type: 'card', id };
+  render();
+  if (currentId === id) fillSheet(t);
+}
+
+function cycleStatus(id) {
+  const t = byId(id);
+  if (t) setStatus(id, STATUS[t.status].next);
+}
+
+function moveDay(id, delta) {
+  const t = byId(id); if (!t) return;
+  const from = t.date;
+  let d = addDays(parseKey(t.date), delta);
+  while (isWeekend(d)) d = addDays(d, delta > 0 ? 1 : -1);   // Fri -> Mon, Mon -> Fri
+  t.date = dateKey(d);
+  t.order = nextOrder(t.date);
+  renumber(from);
+  save();
+  pendingFocus = { type: 'card', id };
+  // follow the task if it left the visible window
+  const win = weekdayWindow(anchor, 5);
+  if (d < win[0] || d > win[4]) anchor = d;
+  render();
+  if (currentId === id) fillSheet(t);
+}
+
+function reorder(id, delta) {
+  const t = byId(id); if (!t || t.time) return false;     // timed cards are ordered by their time
+  const untimed = inColumn(t.date).filter(x => !x.time);
+  const i = untimed.findIndex(x => x.id === id);
+  const j = i + delta;
+  if (i < 0 || j < 0 || j >= untimed.length) return false;
+  untimed.splice(j, 0, untimed.splice(i, 1)[0]);
+  const timedCount = inColumn(t.date).length - untimed.length;
+  untimed.forEach((x, k) => { x.order = timedCount + k; });
+  save();
+  pendingFocus = { type: 'card', id };
+  render();
+  return true;
+}
+
+function deleteTask(id) {
+  const i = tasks.findIndex(t => t.id === id);
+  if (i < 0) return;
+  const snapshot = tasks[i];
+  tasks.splice(i, 1);
+  renumber(snapshot.date);
+  save();
+  if (currentId === id) { currentId = null; if (sheet.open) sheet.close(); }
+  render();
+  showToast('Task deleted', () => {
+    tasks.splice(Math.min(i, tasks.length), 0, snapshot);
+    renumber(snapshot.date);
+    save();
+    render();
+  });
+}
+
+const announce = msg => { $('#live').textContent = msg; };
+
+/* new tasks default to today: jump to today's week and focus its add row */
+function startNewTask() {
+  const target = parseKey(snapToWeekday(dateKey(new Date())));   // on a weekend, the next working day
+  const isToday = dateKey(target) === dateKey(new Date());
+  anchor = target;
+  snapToToday = true;
+  pendingFocus = { type: 'add', date: dateKey(target) };
+  render();
+  announce(`New task due ${isToday ? 'today, ' : ''}${fmtDayName(target)} ${fmtLong(target)}. Type a title and press Enter.`);
+}
+
+$('#new-task').addEventListener('click', startNewTask);
+
+/* N anywhere on the board. Never while typing, never inside the sheet, never with a
+   modifier - Cmd/Ctrl+N belongs to the browser. */
+document.addEventListener('keydown', e => {
+  if (e.key !== 'n' && e.key !== 'N') return;
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  if (sheet.open) return;
+  const el = e.target;
+  if (el instanceof HTMLElement && (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.isContentEditable)) return;
+  e.preventDefault();
+  startNewTask();
+});
+
+/* ---------------- board events ---------------- */
+grid.addEventListener('click', e => {
+  const stBtn = e.target.closest('[data-act="status"]');
+  if (stBtn) { e.stopPropagation(); cycleStatus(stBtn.closest('.card').dataset.id); return; }
+  const card = e.target.closest('.card');
+  if (card) openSheet(card.dataset.id);
+});
+
+grid.addEventListener('keydown', e => {
+  const add = e.target.closest('.addinput');
+  if (add) {
+    if (e.key === 'Enter' && add.value.trim()) { e.preventDefault(); addTask(add.dataset.add, add.value); }
+    else if (e.key === 'Escape') { add.value = ''; add.blur(); }
+    return;
+  }
+  const card = e.target.closest('.card');
+  if (!card) return;
+  const id = card.dataset.id;
+
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openSheet(id); return; }
+  if (!(e.ctrlKey || e.metaKey)) return;
+  if (e.key === 'ArrowLeft')  { e.preventDefault(); moveDay(id, -1); }
+  if (e.key === 'ArrowRight') { e.preventDefault(); moveDay(id, 1); }
+  if (e.key === 'ArrowUp')    { e.preventDefault(); if (!reorder(id, -1)) announceOrderLimit(id); }
+  if (e.key === 'ArrowDown')  { e.preventDefault(); if (!reorder(id, 1)) announceOrderLimit(id); }
+});
+
+function announceOrderLimit(id) {
+  const t = byId(id);
+  if (t && t.time) showToast('Timed tasks are ordered by their time — change the time to move it', null);
+}
+
+/* drag: native HTML5 DnD (its own movement threshold, so a click never reads as a drag) */
+let dragId = null;
+const dropline = document.createElement('div');
+dropline.className = 'dropline';
+
+grid.addEventListener('dragstart', e => {
+  const card = e.target.closest('.card');
+  if (!card) return;
+  dragId = card.dataset.id;
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', dragId);
+  requestAnimationFrame(() => card.classList.add('is-dragging'));
+});
+
+grid.addEventListener('dragend', () => {
+  dragId = null;
+  dropline.remove();
+  grid.querySelectorAll('.is-dragging').forEach(el => el.classList.remove('is-dragging'));
+  grid.querySelectorAll('.is-drop').forEach(el => el.classList.remove('is-drop'));
+});
+
+grid.addEventListener('dragover', e => {
+  const col = e.target.closest('.col');
+  if (!col || !dragId) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  grid.querySelectorAll('.is-drop').forEach(el => { if (el !== col) el.classList.remove('is-drop'); });
+  col.classList.add('is-drop');
+
+  // insertion line lives in the untimed group only; timed order comes from the clock
+  const body = col.querySelector('.colbody');
+  const untimed = [...body.querySelectorAll('.card')].filter(c => {
+    const t = byId(c.dataset.id);
+    return t && !t.time && c.dataset.id !== dragId;
+  });
+  const after = untimed.find(c => e.clientY < c.getBoundingClientRect().top + c.offsetHeight / 2);
+  if (after) body.insertBefore(dropline, after);
+  else body.insertBefore(dropline, body.querySelector('.addrow'));
+});
+
+grid.addEventListener('drop', e => {
+  const col = e.target.closest('.col');
+  if (!col || !dragId) return;
+  e.preventDefault();
+  const t = byId(dragId);
+  const target = col.dataset.date;
+  if (!t) return;
+
+  const before = dropline.nextElementSibling;
+  const beforeTask = before && before.classList.contains('card') ? byId(before.dataset.id) : null;
+  const from = t.date;
+  t.date = target;
+  t.order = beforeTask && !beforeTask.time ? beforeTask.order - 0.5 : nextOrder(target) + 1;
+  renumber(target);
+  if (from !== target) renumber(from);
+  save();
+  pendingFocus = { type: 'card', id: t.id };
+  render();
+  if (currentId === t.id) fillSheet(t);
+});
+
+$('#prev').addEventListener('click', () => { anchor = prevWeekday(parseKey(snapToWeekday(dateKey(anchor)))); render(); });
+$('#next').addEventListener('click', () => { anchor = nextWeekday(parseKey(snapToWeekday(dateKey(anchor)))); render(); });
+$('#today').addEventListener('click', () => { anchor = new Date(); snapToToday = true; render(); });
+
+/* ---------------- detail sheet ---------------- */
+const debounce = (fn, ms) => { let h; return (...a) => { clearTimeout(h); h = setTimeout(() => fn(...a), ms); }; };
+const commit = debounce(() => { save(); render(); }, 300);
+
+function openSheet(id) {
+  const t = byId(id);
+  if (!t) return;
+  currentId = id;
+  disarmDelete();
+  fillSheet(t);
+  sheet.showModal();
+}
+
+function fillSheet(t) {
+  $('#s-title').value = t.title;
+  $('#s-desc').value = t.desc;
+  $('#s-date').value = t.date;
+  $('#s-time').value = t.time || '';
+  $('#s-created').textContent = 'Task created on ' + fmtLong(new Date(t.createdAt));
+  $('#s-status').innerHTML = STATUS_ORDER.map(k => `<button class="seg-btn${k === t.status ? ' is-on' : ''}"
+      type="button" data-set="${k}" role="radio" aria-checked="${k === t.status}"
+      tabindex="${k === t.status ? 0 : -1}">${STATUS_ICON[k]}${STATUS[k].label}</button>`).join('');
+}
+
+$('#s-close').addEventListener('click', () => sheet.close());
+sheet.addEventListener('close', () => { currentId = null; disarmDelete(); });
+
+$('#s-status').addEventListener('click', e => {
+  const btn = e.target.closest('[data-set]');
+  if (btn && currentId) setStatus(currentId, btn.dataset.set);
+});
+
+/* arrow keys move between radios, as a radiogroup is expected to */
+$('#s-status').addEventListener('keydown', e => {
+  if (!currentId || !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
+  e.preventDefault();
+  const t = byId(currentId); if (!t) return;
+  const step = (e.key === 'ArrowLeft' || e.key === 'ArrowUp') ? -1 : 1;
+  const i = STATUS_ORDER.indexOf(t.status);
+  setStatus(currentId, STATUS_ORDER[(i + step + STATUS_ORDER.length) % STATUS_ORDER.length]);
+  const on = $('#s-status').querySelector('.is-on');
+  if (on) on.focus();
+});
+
+$('#s-title').addEventListener('input', e => { const t = byId(currentId); if (t) { t.title = e.target.value; commit(); } });
+$('#s-desc').addEventListener('input', e => { const t = byId(currentId); if (t) { t.desc = e.target.value; commit(); } });
+
+$('#s-date').addEventListener('change', e => {
+  const t = byId(currentId);
+  if (!t || !/^\d{4}-\d{2}-\d{2}$/.test(e.target.value)) { if (t) e.target.value = t.date; return; }
+  const from = t.date;
+  t.date = snapToWeekday(e.target.value);
+  t.order = nextOrder(t.date);
+  renumber(from); renumber(t.date);
+  save();
+  anchor = parseKey(t.date);
+  render();
+  if (t.date !== e.target.value) {
+    e.target.value = t.date;
+    announce(`Weekends are not on this board. Moved to ${fmtDayName(parseKey(t.date))} ${fmtLong(parseKey(t.date))}.`);
+    showToast('Weekends are off the board — moved to ' + fmtDayName(parseKey(t.date)), null);
+  }
+});
+
+$('#s-time').addEventListener('change', e => {
+  const t = byId(currentId); if (!t) return;
+  t.time = /^\d{2}:\d{2}$/.test(e.target.value) ? e.target.value : null;
+  t.order = nextOrder(t.date);
+  renumber(t.date);
+  save(); render();
+});
+
+/* two-step delete instead of a nested confirm dialog */
+let armed = false;
+function disarmDelete() {
+  armed = false;
+  const b = $('#s-delete');
+  b.textContent = 'Delete task';
+  b.classList.remove('is-armed');
+}
+$('#s-delete').addEventListener('click', () => {
+  const b = $('#s-delete');
+  if (!armed) { armed = true; b.textContent = 'Confirm delete'; b.classList.add('is-armed'); return; }
+  const id = currentId;
+  disarmDelete();
+  deleteTask(id);
+});
+
+/* ---------------- toast ---------------- */
+function showToast(msg, onAct) {
+  const el = $('#toast'), act = $('#toast-act');
+  clearTimeout(undoTimer);
+  $('#toast-msg').textContent = msg;
+  act.hidden = !onAct;
+  act.onclick = onAct ? () => { hideToast(); onAct(); } : null;
+  el.classList.add('is-on');
+  undoTimer = setTimeout(hideToast, onAct ? 4000 : 5000);
+}
+function hideToast() { clearTimeout(undoTimer); $('#toast').classList.remove('is-on'); }
+
+/* ---------------- self-check: index.html?selftest=1 ---------------- */
+function selftest() {
+  const out = [];
+  let fails = 0;
+  const ok = (name, cond, got) => {
+    if (!cond) fails++;
+    out.push(`${cond ? 'PASS' : 'FAIL'}  ${name}${cond ? '' : '   got: ' + JSON.stringify(got)}`);
+  };
+
+  // 1. the rolling weekday window
+  const win = (y, m, d, n = 5) => weekdayWindow(new Date(y, m, d), n).map(dateKey);
+  ok('the window opens on the given day and is 5 long',
+     win(2026, 8, 8).join() === '2026-09-08,2026-09-09,2026-09-10,2026-09-11,2026-09-14', win(2026, 8, 8).join());
+  ok('a window starting Friday reads Fri, Mon, Tue, Wed, Thu',
+     win(2026, 8, 11).join() === '2026-09-11,2026-09-14,2026-09-15,2026-09-16,2026-09-17', win(2026, 8, 11).join());
+  ok('an anchor on Saturday opens on the following Monday', win(2026, 8, 12)[0] === '2026-09-14', win(2026, 8, 12)[0]);
+  ok('an anchor on Sunday opens on the following Monday', win(2026, 8, 13)[0] === '2026-09-14', win(2026, 8, 13)[0]);
+  ok('the window crosses a month boundary', win(2026, 8, 30).join() === '2026-09-30,2026-10-01,2026-10-02,2026-10-05,2026-10-06', win(2026, 8, 30).join());
+  ok('the window crosses a year boundary', win(2026, 11, 31)[0] === '2026-12-31' && win(2026, 11, 31)[1] === '2027-01-01', win(2026, 11, 31).join());
+  ok('no window entry is ever a weekend (400-day sweep)', (() => {
+    for (let i = 0; i < 400; i++) {
+      const w = weekdayWindow(addDays(new Date(2026, 0, 1), i), 5);
+      if (w.length !== 5 || w.some(isWeekend)) return false;
+    }
+    return true;
+  })());
+  ok('nextWeekday: Fri -> Mon', dateKey(nextWeekday(new Date(2026, 8, 11))) === '2026-09-14');
+  ok('prevWeekday: Mon -> Fri', dateKey(prevWeekday(new Date(2026, 8, 14))) === '2026-09-11');
+  ok('stepping 5 forward then 5 back returns to the start', (() => {
+    let d = new Date(2026, 8, 8);
+    for (let i = 0; i < 5; i++) d = nextWeekday(d);
+    for (let i = 0; i < 5; i++) d = prevWeekday(d);
+    return dateKey(d) === '2026-09-08';
+  })());
+  ok('rangeLabel: same month', rangeLabel(new Date(2026, 8, 8), new Date(2026, 8, 14)) === '8 – 14 Sep 2026',
+     rangeLabel(new Date(2026, 8, 8), new Date(2026, 8, 14)));
+  ok('rangeLabel: across months', rangeLabel(new Date(2026, 8, 30), new Date(2026, 9, 6)) === '30 Sep – 6 Oct 2026',
+     rangeLabel(new Date(2026, 8, 30), new Date(2026, 9, 6)));
+  ok('rangeLabel: across years', rangeLabel(new Date(2026, 11, 31), new Date(2027, 0, 6)) === '31 Dec 2026 – 6 Jan 2027',
+     rangeLabel(new Date(2026, 11, 31), new Date(2027, 0, 6)));
+
+  // 2. local date keys — toISOString() would shift the day off UTC
+  ok('dateKey uses local time, not UTC', dateKey(new Date(2026, 0, 1)) === '2026-01-01', dateKey(new Date(2026, 0, 1)));
+  ok('parseKey round-trips', dateKey(parseKey('2026-03-08')) === '2026-03-08');
+
+  // 3. column sort
+  const sorted = sortColumn([
+    { id: 'a', time: null,    order: 1, createdAt: 1 },
+    { id: 'b', time: '13:00', order: 9, createdAt: 2 },
+    { id: 'c', time: null,    order: 0, createdAt: 3 },
+    { id: 'd', time: '09:30', order: 5, createdAt: 4 }
+  ]).map(t => t.id).join('');
+  ok('timed ascending first, then untimed by order', sorted === 'dbca', sorted);
+  const gained = sortColumn([
+    { id: 'x', time: null, order: 0, createdAt: 1 },
+    { id: 'y', time: '08:00', order: 1, createdAt: 2 }
+  ]).map(t => t.id).join('');
+  ok('a timed task sorts above untimed ones', gained === 'yx', gained);
+
+  // 4. storage round-trip
+  const sample = normalize({ title: 'Café & <b>bold</b>', date: '2026-09-08', time: '09:00', desc: 'note' }, 0);
+  const back = JSON.parse(JSON.stringify([sample])).map(normalize)[0];
+  ok('serialize -> parse preserves the task', back.title === sample.title && back.time === '09:00' && back.desc === 'note', back);
+  const junk = normalize({ title: 42, date: 'nope', time: '99', desc: 99, order: 'x' }, 0);
+  ok('normalize repairs malformed stored data', junk.title === '' && junk.time === null && junk.desc === '' && junk.order === 0, junk);
+
+  // 5. status: three states, legacy migration, cycle order
+  ok('legacy done:true migrates to status done', normalize({ done: true }, 0).status === 'done', normalize({ done: true }, 0).status);
+  ok('legacy done:false migrates to status todo', normalize({ done: false }, 0).status === 'todo');
+  ok('unknown status falls back to todo', normalize({ status: 'wat' }, 0).status === 'todo');
+  ok('a valid status is preserved', normalize({ status: 'doing' }, 0).status === 'doing');
+  const cyc = ['todo'];
+  for (let i = 0; i < 3; i++) cyc.push(STATUS[cyc[cyc.length - 1]].next);
+  ok('status cycles todo -> doing -> done -> todo', cyc.join('>') === 'todo>doing>done>todo', cyc.join('>'));
+  ok('every status has an icon', STATUS_ORDER.every(k => !!STATUS_ICON[k]) && STATUS_ORDER.length === 3);
+
+  // 6. the boot load must not have fallen back to an empty list
+  ok('load() did not fall back to an empty list', !loadFailed);
+
+  // 7. a new task defaults to today, and the shortcut goes there
+  ok('a new task defaults to Todo with no time', (() => {
+    const t = normalize({ title: 'x', date: dateKey(new Date()) }, 0);
+    return t.status === 'todo' && t.time === null && t.date === dateKey(new Date());
+  })());
+  ok('startNewTask jumps to today and focuses its add row', (() => {
+    const saved = anchor;
+    anchor = new Date(2020, 0, 1);                       // park on an unrelated week
+    startNewTask();
+    const jumped = dateKey(weekdayWindow(anchor, 1)[0]) === snapToWeekday(dateKey(new Date()));
+    const focused = !!document.activeElement && document.activeElement.dataset.add === dateKey(new Date());
+    anchor = saved; render();
+    return jumped && focused;
+  })());
+
+  // 8. the board is Mon-Fri and nothing can land on a weekend
+  ok('the board renders 5 weekday columns starting at the anchor', (() => {
+    const cols = [...document.querySelectorAll('.col')].map(c => c.dataset.date);
+    if (cols.length !== 5 || cols.some(k => isWeekend(parseKey(k)))) return false;
+    return cols.join() === weekdayWindow(anchor, 5).map(dateKey).join();
+  })());
+  ok('the first column is today on load', (() => {
+    const saved = anchor;
+    anchor = new Date(); render();
+    const first = document.querySelector('.col').dataset.date;
+    anchor = saved; render();
+    return first === snapToWeekday(dateKey(new Date()));
+  })());
+  ok('snapToWeekday: Sat -> Mon', snapToWeekday('2026-09-12') === '2026-09-14', snapToWeekday('2026-09-12'));
+  ok('snapToWeekday: Sun -> Mon', snapToWeekday('2026-09-13') === '2026-09-14', snapToWeekday('2026-09-13'));
+  ok('snapToWeekday leaves weekdays alone', snapToWeekday('2026-09-10') === '2026-09-10');
+  ok('normalize rescues a task stored on a weekend', normalize({ date: '2026-09-13' }, 0).date === '2026-09-14',
+     normalize({ date: '2026-09-13' }, 0).date);
+  ok('moveDay steps Fri -> Mon and Mon -> Fri', (() => {
+    const probe = normalize({ title: 'weekend probe', date: '2026-09-11' }, 0);   // a Friday
+    tasks.push(probe);
+    moveDay(probe.id, 1);
+    const fwd = byId(probe.id).date;
+    moveDay(probe.id, -1);
+    const back = byId(probe.id).date;
+    tasks.splice(tasks.findIndex(x => x.id === probe.id), 1);
+    return fwd === '2026-09-14' && back === '2026-09-11';
+  })());
+
+  // 9. per-day progress arithmetic
+  const P = st => progressOf(st.map(s => ({ status: s })));
+  ok('an empty column yields 0%, not NaN', (() => {
+    const p = P([]);
+    return p.total === 0 && p.donePct === 0 && p.doingPct === 0 && progressLabel(p) === '';
+  })());
+  ok('1 done of 3 is 33%', P(['done', 'todo', 'todo']).donePct === 33, P(['done', 'todo', 'todo']).donePct);
+  ok('all done is 100%', P(['done', 'done']).donePct === 100);
+  ok('in-progress fills its own segment', (() => {
+    const p = P(['done', 'doing', 'todo', 'todo']);
+    return p.donePct === 25 && p.doingPct === 25;
+  })());
+  ok('done + in-progress never overflows the track', (() => {
+    for (const combo of [['done'], ['doing'], ['done','doing'], ['done','doing','todo'],
+                         ['done','done','doing'], ['doing','doing','doing']]) {
+      const p = P(combo);
+      if (p.donePct + p.doingPct > 100) return false;
+    }
+    return true;
+  })());
+  ok('the label states the numbers a bar cannot', progressLabel(P(['done','doing','todo'])) === '1 of 3 done, 1 in progress',
+     progressLabel(P(['done','doing','todo'])));
+
+  // 10. editing in place must not replay the card entrance animation
+  ok('a status change re-renders without animating the cards', (() => {
+    const probe = normalize({ title: 'anim probe', date: dateKey(weekdayWindow(new Date(), 1)[0]) }, 0);
+    tasks.push(probe);
+    render();                                        // same week -> should be static
+    setStatus(probe.id, 'doing');
+    const card = document.querySelector(`.card[data-id="${probe.id}"]`);
+    const staticAfterEdit = !!card && getComputedStyle(card).animationName === 'none'
+      && !grid.classList.contains('is-fresh');
+    tasks.splice(tasks.findIndex(x => x.id === probe.id), 1);
+    save(); render();
+    return staticAfterEdit;
+  })());
+  ok('a day step does not animate the cards either', (() => {
+    anchor = nextWeekday(new Date());
+    render();
+    const staticOnStep = !grid.classList.contains('is-fresh')
+      && (!document.querySelector('.card') || getComputedStyle(document.querySelector('.card')).animationName === 'none');
+    anchor = new Date();
+    render();
+    return staticOnStep;
+  })());
+
+  // 11. escaping
+  ok('esc neutralises markup', esc('<img src=x onerror=1>') === '&lt;img src=x onerror=1&gt;', esc('<img src=x onerror=1>'));
+
+  const head = fails === 0 ? `ALL ${out.length} CHECKS PASSED` : `${fails} of ${out.length} CHECKS FAILED`;
+  const el = $('#st');
+  el.textContent = head + '\n\n' + out.join('\n');
+  el.classList.add('is-on');
+  (fails ? console.error : console.log)('Todo Board selftest: ' + head);
+  out.forEach(l => console.log(l));
+}
+
+/* ---------------- boot ---------------- */
+render();
+if (new URLSearchParams(location.search).get('selftest') === '1') selftest();
+</script>
+</body>
+</html>
