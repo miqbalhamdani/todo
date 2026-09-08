@@ -9,6 +9,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 *,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none !important}   /* display:flex on a class would otherwise outrank this */
 
 :root{
   --bg:#FFFFFF; --surface:#FAFAFA; --surface-2:#F4F4F5;
@@ -17,6 +18,7 @@
   --r:8px; --r-sm:6px;
   --s-1:8px; --s-2:12px; --s-3:16px; --s-4:24px; --s-5:32px;
   --dur:180ms; --ease:cubic-bezier(.2,.8,.2,1);
+  --desc-h:72px;                     /* one height for both description modes */
   color-scheme:light;
 }
 
@@ -71,6 +73,8 @@ button{font:inherit;color:inherit;touch-action:manipulation}
   font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;line-height:1;
   background:rgba(255,255,255,.2);border-radius:4px;padding:3px 5px;
 }
+.kbd-dark{background:var(--surface-2);color:var(--ink-2);margin-left:6px}
+.btn.is-armed .kbd-dark{background:rgba(255,255,255,.22);color:var(--bg)}
 @media (pointer:coarse){.iconbtn,.cta{min-width:44px;min-height:44px}.ghost{min-height:44px}}
 
 /* ---------- board ---------- */
@@ -78,7 +82,7 @@ button{font:inherit;color:inherit;touch-action:manipulation}
 .grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));min-height:100%}
 .col{display:flex;flex-direction:column;min-width:0;position:relative}
 .col + .col{border-left:1px solid var(--border)}
-.col.is-today{background:var(--surface);box-shadow:inset 1.5px 0 0 var(--border-strong),inset -1.5px 0 0 var(--border-strong)}
+.col.is-today{background:var(--surface);box-shadow:inset 1.5px 0 0 var(--border-strong)}
 
 .colhead{
   position:sticky;top:0;z-index:20;background:inherit;text-align:center;
@@ -118,7 +122,6 @@ button{font:inherit;color:inherit;touch-action:manipulation}
 .card-meta{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px 6px;margin-top:6px;padding-left:26px}
 .card-meta > *{min-width:0}
 .time{font-size:11px;color:var(--ink-2);white-space:nowrap}
-.time.is-none{color:var(--ink-3)}
 
 .st-btn{
   position:relative;flex:0 0 auto;display:grid;place-items:center;
@@ -182,8 +185,9 @@ button{font:inherit;color:inherit;touch-action:manipulation}
 @media (pointer:coarse){.seg-btn{min-height:44px}}
 .sheet-h1{margin:var(--s-3) 0 4px}
 .title-input{
-  width:100%;padding:0 0 2px;border:0;outline:0;background:transparent;
+  display:block;width:100%;padding:0 0 2px;border:0;outline:0;background:transparent;
   font:inherit;font-size:26px;font-weight:700;letter-spacing:-.025em;line-height:1.2;color:var(--ink);
+  resize:none;overflow:hidden;                     /* grows downward; never scrolls sideways */
 }
 .title-input:focus{box-shadow:0 1.5px 0 var(--border-strong)}
 .meta{font-size:13px;color:var(--ink-2);margin:0}
@@ -196,11 +200,79 @@ button{font:inherit;color:inherit;touch-action:manipulation}
 }
 .rule{border:0;border-top:1px dashed var(--border);margin:var(--s-4) 0}
 .sec-title{font-size:15px;font-weight:700;margin:0 0 var(--s-2)}
-.ta{
-  width:100%;min-height:92px;resize:vertical;
-  border:1px solid var(--border);border-radius:var(--r-sm);padding:10px;
-  font:inherit;font-size:14px;line-height:1.6;background:var(--bg);color:var(--ink);
+.sec-head{display:flex;align-items:baseline;justify-content:space-between;gap:var(--s-2);min-height:26px}
+.sec-head .sec-title{margin:0}
+.linkish{
+  background:transparent;border:0;padding:4px 2px;font-size:12px;font-weight:600;
+  color:var(--ink-2);cursor:pointer;text-decoration:underline;text-underline-offset:2px;
 }
+.linkish:hover{color:var(--ink)}
+.desc-text,.rt-wrap{
+  margin:var(--s-2) 0 0;border:1px solid transparent;border-radius:var(--r-sm);
+}
+.desc-text{
+  padding:10px;min-height:var(--desc-h);cursor:text;
+  font-size:14px;line-height:1.6;color:var(--ink);
+  overflow-wrap:anywhere;              /* keeps a long URL from widening the sheet */
+  transition:border-color var(--dur) var(--ease),background var(--dur) var(--ease);
+}
+.desc-text:hover{border-color:var(--border);background:var(--surface)}
+.desc-text.is-empty{color:var(--ink-3)}
+.desc-text a,.rt a{color:var(--ink);text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+.desc-text a:hover{background:var(--surface-2)}
+.desc-text > :first-child,.rt > :first-child{margin-top:0}
+.desc-text > :last-child,.rt > :last-child{margin-bottom:0}
+.desc-text p,.rt p{margin:0 0 var(--s-2)}
+.desc-text h4,.desc-text h5,.desc-text h6,.rt h4,.rt h5,.rt h6{margin:var(--s-3) 0 var(--s-1);line-height:1.3;font-weight:700}
+.desc-text h4,.rt h4{font-size:15px}
+.desc-text h5,.rt h5{font-size:14px}
+.desc-text h6,.rt h6{font-size:13px;color:var(--ink-2)}
+.desc-text ul,.desc-text ol,.rt ul,.rt ol{margin:0 0 var(--s-2);padding-left:20px}
+.desc-text li,.rt li{margin:2px 0}
+.desc-text strong,.rt strong,.rt b{font-weight:700}
+.desc-text del,.rt del,.rt s,.rt strike{color:var(--ink-3)}
+.desc-text code,.rt code{
+  font-family:'JetBrains Mono',ui-monospace,monospace;font-size:12.5px;
+  background:var(--surface-2);border-radius:4px;padding:1px 4px;
+}
+.desc-text pre,.rt pre{
+  margin:0 0 var(--s-2);padding:10px;background:var(--surface-2);border-radius:var(--r-sm);
+  white-space:pre;overflow-wrap:normal;overflow-x:auto;   /* a long code line scrolls, not the sheet */
+}
+.desc-text pre code,.rt pre code{background:none;padding:0;font-size:12.5px;line-height:1.55}
+.desc-text blockquote,.rt blockquote{
+  margin:0 0 var(--s-2);padding:2px 0 2px 12px;
+  border-left:2px solid var(--border);color:var(--ink-2);
+}
+.desc-text hr,.rt hr{border:0;border-top:1px solid var(--border);margin:var(--s-3) 0}
+/* the toolbar lives inside the editor's border, so entering edit mode adds no height */
+.rt-wrap{
+  display:flex;flex-direction:column;min-height:var(--desc-h);
+  border-color:var(--border);background:var(--bg);overflow:hidden;
+}
+.rt-wrap:focus-within{border-color:var(--border-strong)}
+.rt-bar{
+  display:flex;align-items:center;gap:2px;flex-wrap:wrap;
+  padding:5px 6px;border-bottom:1px solid var(--border);background:var(--surface);
+}
+.rt-btn{
+  display:grid;place-items:center;min-width:26px;height:26px;padding:0 5px;
+  background:transparent;border:1px solid transparent;border-radius:4px;cursor:pointer;
+  font-size:12px;font-weight:600;color:var(--ink-2);line-height:1;
+  transition:background var(--dur) var(--ease),color var(--dur) var(--ease);
+}
+.rt-btn:hover{background:var(--surface-2);color:var(--ink)}
+.rt-btn[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.rt-btn .b{font-weight:800}
+.rt-btn .i{font-style:italic}
+.rt-btn .s{text-decoration:line-through}
+.rt-btn .m{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px}
+@media (pointer:coarse){.rt-btn{min-width:36px;height:36px}}
+.rt{
+  flex:1 1 auto;min-height:0;padding:10px;outline:0;
+  font-size:14px;line-height:1.6;color:var(--ink);overflow-wrap:anywhere;
+}
+.rt:empty::before{content:attr(data-placeholder);color:var(--ink-3)}
 .xbtn{
   position:relative;display:grid;place-items:center;width:26px;height:26px;flex:none;
   background:transparent;border:1px solid transparent;border-radius:var(--r-sm);cursor:pointer;
@@ -312,7 +384,7 @@ button{font:inherit;color:inherit;touch-action:manipulation}
     </div>
 
     <h2 class="sheet-h1" id="sheet-title-h">
-      <input class="title-input" id="s-title" aria-label="Task title" placeholder="Untitled task">
+      <textarea class="title-input" id="s-title" rows="1" aria-label="Task title" placeholder="Untitled task"></textarea>
     </h2>
     <p class="meta" id="s-created"></p>
 
@@ -329,12 +401,28 @@ button{font:inherit;color:inherit;touch-action:manipulation}
 
     <hr class="rule">
 
-    <h3 class="sec-title">Description</h3>
-    <textarea class="ta" id="s-desc" placeholder="Add more detail…"></textarea>
+    <div class="sec-head">
+      <h3 class="sec-title" id="s-desc-label">Description</h3>
+      <button class="linkish" id="s-desc-edit" type="button" aria-controls="s-desc">Edit</button>
+    </div>
+    <div class="desc-text" id="s-desc-text" aria-labelledby="s-desc-label"></div>
+    <div class="rt-wrap" id="s-desc-wrap" hidden>
+      <div class="rt-bar" id="s-rt-bar" role="toolbar" aria-label="Formatting">
+        <button class="rt-btn" type="button" data-cmd="bold" title="Bold (⌘B)" aria-label="Bold"><span class="b">B</span></button>
+        <button class="rt-btn" type="button" data-cmd="italic" title="Italic (⌘I)" aria-label="Italic"><span class="i">I</span></button>
+        <button class="rt-btn" type="button" data-cmd="strikeThrough" title="Strikethrough" aria-label="Strikethrough"><span class="s">S</span></button>
+        <button class="rt-btn" type="button" data-cmd="code" title="Code" aria-label="Code"><span class="m">&lt;&gt;</span></button>
+        <button class="rt-btn" type="button" data-cmd="insertUnorderedList" title="Bulleted list" aria-label="Bulleted list"><span class="m">•—</span></button>
+        <button class="rt-btn" type="button" data-cmd="insertOrderedList" title="Numbered list" aria-label="Numbered list"><span class="m">1—</span></button>
+        <button class="rt-btn" type="button" data-cmd="link" title="Link" aria-label="Add link"><span class="m">↗</span></button>
+      </div>
+      <div class="rt" id="s-desc" contenteditable="true" role="textbox" aria-multiline="true"
+           aria-labelledby="s-desc-label" data-placeholder="Add more detail…"></div>
+    </div>
 
     <div class="danger">
-      <button class="btn" id="s-delete">Delete task</button>
-      <p class="hint">Deleting offers a 4-second undo.</p>
+      <button class="btn" id="s-delete" aria-keyshortcuts="D">Delete task <kbd class="kbd kbd-dark" aria-hidden="true">D</kbd></button>
+      <p class="hint">Press D (outside a text field) to delete. Either way you get a 4-second undo.</p>
     </div>
   </div>
 </dialog>
@@ -487,6 +575,7 @@ let currentId = null;
 let pendingFocus = null;
 let snapToToday = true;              // land on today's column in the mobile day view
 let hasRendered = false;             // only the first paint animates the cards in
+let pendingNewId = null;             // a just-created task, discarded on close if left untouched
 let undoBuf = null;
 let undoTimer = null;
 
@@ -574,7 +663,7 @@ function colHTML(d) {
 
 function cardHTML(t, i) {
   const st = STATUS[t.status], nextSt = STATUS[st.next];
-  const label = `${t.title || 'Untitled task'}, ${t.time ? fmtTime(t.time) : 'no time set'}, ${st.label}. Open details.`;
+  const label = `${t.title || 'Untitled task'}, ${t.time ? fmtTime(t.time) + ', ' : ''}${st.label}. Open details.`;
   return `<article class="card${t.status === 'done' ? ' is-done' : ''}" draggable="true" tabindex="0"
       data-id="${t.id}" style="--i:${i}" role="button" aria-label="${esc(label)}">
     <div class="card-row">
@@ -583,9 +672,7 @@ function cardHTML(t, i) {
               aria-label="Status: ${st.label}. Activate to set ${nextSt.label}.">${STATUS_ICON[t.status]}</button>
       <span class="card-title" title="${esc(t.title)}">${esc(t.title) || '<span style="color:var(--ink-3)">Untitled task</span>'}</span>
     </div>
-    <div class="card-meta">
-      <span class="time mono${t.time ? '' : ' is-none'}">${t.time ? fmtTime(t.time) : 'no time'}</span>
-    </div>
+    ${t.time ? `<div class="card-meta"><span class="time mono">${fmtTime(t.time)}</span></div>` : ''}
   </article>`;
 }
 
@@ -608,11 +695,11 @@ function renumber(key) {
   sortColumn(tasks.filter(t => t.date === key)).forEach((t, i) => { t.order = i; });
 }
 
-function addTask(key, title) {
+function addTask(key, title, focusAddRow = true) {
   const t = normalize({ title: title.trim(), date: key, order: nextOrder(key), createdAt: Date.now() }, tasks.length);
   tasks.push(t);
   save();
-  pendingFocus = { type: 'add', date: key };
+  if (focusAddRow) pendingFocus = { type: 'add', date: key };
   render();
   return t;
 }
@@ -683,18 +770,37 @@ function deleteTask(id) {
 
 const announce = msg => { $('#live').textContent = msg; };
 
-/* new tasks default to today: jump to today's week and focus its add row */
+/* a brand-new task that was never given anything is not worth keeping */
+const isUntouched = t => !!t && !t.title.trim() && !t.desc.trim() && t.time === null && t.status === 'todo';
+
+/* N / the New task button: create the task due today and open it for editing */
 function startNewTask() {
   const target = parseKey(snapToWeekday(dateKey(new Date())));   // on a weekend, the next working day
   const isToday = dateKey(target) === dateKey(new Date());
   anchor = target;
   snapToToday = true;
-  pendingFocus = { type: 'add', date: dateKey(target) };
-  render();
-  announce(`New task due ${isToday ? 'today, ' : ''}${fmtDayName(target)} ${fmtLong(target)}. Type a title and press Enter.`);
+  const t = addTask(dateKey(target), '', false);                 // don't fight the modal for focus
+  pendingNewId = t.id;
+  openSheet(t.id);
+  const title = $('#s-title');
+  title.focus();
+  title.setSelectionRange(0, 0);
+  announce(`New task due ${isToday ? 'today, ' : ''}${fmtDayName(target)} ${fmtLong(target)}. Type a title.`);
 }
 
 $('#new-task').addEventListener('click', startNewTask);
+
+/* D deletes the open task. Text fields win, so this only fires once focus has left one. */
+document.addEventListener('keydown', e => {
+  if (e.key !== 'd' && e.key !== 'D') return;
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  if (!sheet.open || !currentId) return;
+  const el = e.target;
+  if (el instanceof HTMLElement && (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.isContentEditable)) return;
+  e.preventDefault();
+  pendingNewId = null;                 // an explicit delete is not a discard
+  deleteTask(currentId);
+});
 
 /* N anywhere on the board. Never while typing, never inside the sheet, never with a
    modifier - Cmd/Ctrl+N belongs to the browser. */
@@ -815,12 +921,238 @@ function openSheet(id) {
   currentId = id;
   disarmDelete();
   fillSheet(t);
+  setDescMode('text');                 // every open starts in read mode
   sheet.showModal();
+  autosizeTitle();                     // measurable only now that the dialog is displayed
+}
+
+/* Only http(s):// and www. are recognised, so javascript: and data: can never become an
+   href - the allowlist is the pattern itself, not a filter applied afterwards. */
+const URL_RE = /\b(?:https?:\/\/|www\.)[^\s<>"'`)\]]+/gi;
+
+/* Only these three shapes may become an href. An allowlist, not a blocklist, so
+   javascript:, data: and vbscript: are unreachable rather than filtered out. */
+function safeHref(raw) {
+  const u = String(raw).trim();
+  if (/^https?:\/\/\S+$/i.test(u)) return u;
+  if (/^www\.\S+$/i.test(u)) return 'https://' + u;
+  if (/^mailto:[^\s@]+@[^\s@]+$/i.test(u)) return u;
+  return null;                         // anything else stays literal text
+}
+
+function mdAnchor(href, label) {
+  return `<a href="${esc(href)}" target="_blank" rel="noopener noreferrer">${esc(label)}</a>`;
+}
+
+/* Inline markdown. Ordered so that code wins over emphasis and ** wins over *. Runs on
+   RAW text and escapes each literal run as it is emitted, so no user character can ever
+   reach the output as markup. */
+const INLINE_RE = new RegExp([
+  '(`[^`\\n]+`)',                            // 1 `code`
+  '(\\*\\*(?=\\S)[^\\n]*?\\S\\*\\*)',        // 2 **bold**
+  '(\\*(?=\\S)[^*\\n]*?\\S\\*|_(?=\\S)[^_\\n]*?\\S_)',   // 3 *em* _em_
+  '(~~(?=\\S)[^\\n]*?\\S~~)',                // 4 ~~strike~~
+  '(\\[[^\\]\\n]*\\]\\([^)\\s]+\\))',        // 5 [label](url)
+  '(\\b(?:https?://|www\\.)[^\\s<>"\'`)\\]]+)'  // 6 bare url
+].join('|'), 'g');
+
+function mdInline(src) {
+  let out = '', last = 0, m;
+  INLINE_RE.lastIndex = 0;
+  while ((m = INLINE_RE.exec(src)) !== null) {
+    const tok = m[0];
+    let piece = null, consumed = tok.length;
+
+    if (m[1]) piece = `<code>${esc(tok.slice(1, -1))}</code>`;
+    else if (m[2]) piece = `<strong>${mdInline(tok.slice(2, -2))}</strong>`;
+    else if (m[3]) piece = `<em>${mdInline(tok.slice(1, -1))}</em>`;
+    else if (m[4]) piece = `<del>${mdInline(tok.slice(2, -2))}</del>`;
+    else if (m[5]) {
+      const cut = tok.lastIndexOf('](');
+      const label = tok.slice(1, cut);
+      const href = safeHref(tok.slice(cut + 2, -1));
+      piece = href ? mdAnchor(href, label) : esc(tok);   // unsafe scheme -> plain text
+    } else if (m[6]) {
+      const url = tok.replace(/[.,;:!?)\]}>'"]+$/, '');   // leave sentence punctuation out
+      if (!url) { INLINE_RE.lastIndex = m.index + tok.length; continue; }
+      piece = mdAnchor(safeHref(url) || url, url);
+      consumed = url.length;
+    }
+
+    out += esc(src.slice(last, m.index)) + piece;
+    last = m.index + consumed;
+    INLINE_RE.lastIndex = last;
+  }
+  return out + esc(src.slice(last));
+}
+
+/* A deliberately small block grammar: fenced code, # ## ### headings, - / 1. lists,
+   > quotes, --- rules, and paragraphs where a single newline is a line break.
+   Headings map to h4-h6 so they nest under the sheet's own h3 without skipping a level. */
+function renderMarkdown(text) {
+  const lines = String(text == null ? '' : text).replace(/\r\n?/g, '\n').split('\n');
+  const out = [];
+  let i = 0;
+
+  const listItems = (test, strip) => {
+    const items = [];
+    while (i < lines.length && test.test(lines[i])) items.push(mdInline(lines[i++].replace(strip, '')));
+    return items.map(x => `<li>${x}</li>`).join('');
+  };
+
+  while (i < lines.length) {
+    const line = lines[i];
+
+    if (/^\s*```/.test(line)) {                      // fenced code: never interpreted
+      i++;
+      const body = [];
+      while (i < lines.length && !/^\s*```/.test(lines[i])) body.push(lines[i++]);
+      if (i < lines.length) i++;                     // closing fence
+      out.push(`<pre><code>${esc(body.join('\n'))}</code></pre>`);
+      continue;
+    }
+    if (!line.trim()) { i++; continue; }
+    const h = line.match(/^(#{1,3})\s+(.*)$/);
+    if (h) { out.push(`<h${h[1].length + 3}>${mdInline(h[2].trim())}</h${h[1].length + 3}>`); i++; continue; }
+    if (/^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/.test(line)) { out.push('<hr>'); i++; continue; }
+    if (/^\s*>\s?/.test(line)) {
+      const body = [];
+      while (i < lines.length && /^\s*>\s?/.test(lines[i])) body.push(lines[i++].replace(/^\s*>\s?/, ''));
+      out.push(`<blockquote>${mdInline(body.join('\n')).replace(/\n/g, '<br>')}</blockquote>`);
+      continue;
+    }
+    if (/^\s*[-*+]\s+/.test(line)) { out.push(`<ul>${listItems(/^\s*[-*+]\s+/, /^\s*[-*+]\s+/)}</ul>`); continue; }
+    if (/^\s*\d+[.)]\s+/.test(line)) { out.push(`<ol>${listItems(/^\s*\d+[.)]\s+/, /^\s*\d+[.)]\s+/)}</ol>`); continue; }
+
+    const para = [];
+    while (i < lines.length && lines[i].trim()
+           && !/^\s*(?:```|#{1,3}\s|>|[-*+]\s|\d+[.)]\s|-{3,}\s*$|\*{3,}\s*$|_{3,}\s*$)/.test(lines[i])) {
+      para.push(lines[i++]);
+    }
+    out.push(`<p>${para.map(mdInline).join('<br>')}</p>`);
+  }
+  return out.join('');
+}
+
+/* The inverse of renderMarkdown, and the sanitiser for the rich editor. Markdown is emitted
+   only for the tags renderMarkdown itself produces; every other element contributes nothing
+   but its text. So a pasted <img onerror> or <script> can never round-trip into storage -
+   at worst it survives as literal characters. Storage stays plain Markdown, never HTML. */
+const MD_BLOCKS = { H4: '# ', H5: '## ', H6: '### ' };
+const BLOCK_SEL = 'p,div,ul,ol,li,pre,blockquote,h1,h2,h3,h4,h5,h6,hr,table';
+
+function htmlToMarkdown(root) {
+  const inline = node => {
+    if (node.nodeType === 3) return node.nodeValue.replace(/ /g, ' ');
+    if (node.nodeType !== 1) return '';
+    const kids = () => [...node.childNodes].map(inline).join('');
+    switch (node.tagName) {
+      case 'BR': return '\n';
+      case 'STRONG': case 'B': { const t = kids(); return t.trim() ? `**${t}**` : t; }
+      case 'EM': case 'I': { const t = kids(); return t.trim() ? `*${t}*` : t; }
+      case 'DEL': case 'S': case 'STRIKE': { const t = kids(); return t.trim() ? `~~${t}~~` : t; }
+      case 'CODE': return '`' + kids() + '`';
+      case 'A': {
+        const label = kids();
+        const href = safeHref(node.getAttribute('href') || '');
+        if (!href) return label;                       // disallowed scheme -> plain text
+        return href === label || href === 'https://' + label ? label : `[${label}](${href})`;
+      }
+      default: return kids();                          // unknown element: text only
+    }
+  };
+
+  const blocks = [];
+  const walk = (node, depth) => {
+    for (const el of node.childNodes) {
+      if (el.nodeType === 3) {
+        if (el.nodeValue.trim()) blocks.push(el.nodeValue.trim());
+        continue;
+      }
+      if (el.nodeType !== 1) continue;
+      const tag = el.tagName;
+      if (MD_BLOCKS[tag]) { blocks.push(MD_BLOCKS[tag] + inline(el).trim()); continue; }
+      if (tag === 'HR') { blocks.push('---'); continue; }
+      if (tag === 'PRE') { blocks.push('```\n' + el.textContent.replace(/\n$/, '') + '\n```'); continue; }
+      if (tag === 'BLOCKQUOTE') {
+        blocks.push(inline(el).trim().split('\n').map(l => '> ' + l).join('\n'));
+        continue;
+      }
+      if (tag === 'UL' || tag === 'OL') {
+        const items = [...el.children].filter(li => li.tagName === 'LI');
+        blocks.push(items.map((li, i) => (tag === 'OL' ? `${i + 1}. ` : '- ') + inline(li).trim()).join('\n'));
+        continue;
+      }
+      if (tag === 'P' || tag === 'DIV') {
+        // execCommand happily nests <ul>/<pre> inside a <p>; recurse rather than flatten
+        if (el.querySelector(BLOCK_SEL)) { walk(el, depth); continue; }
+        const t = inline(el).replace(/\s+$/, '');
+        if (t.trim()) blocks.push(t);
+        continue;
+      }
+      // anything else (img, script, iframe, span, table...): keep only what it says.
+      // Recurse when it wraps real blocks, otherwise take its inline text - never both,
+      // or the content comes out twice.
+      if (el.querySelector && el.querySelector(BLOCK_SEL)) {
+        walk(el, depth);
+      } else {
+        const t = inline(el).trim();
+        if (t) blocks.push(t);
+      }
+    }
+  };
+  walk(root, 0);
+  return blocks.join('\n\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+
+const DESC_PLACEHOLDER = 'Add more detail…';
+
+function renderDescText(t) {
+  const el = $('#s-desc-text');
+  const has = !!(t && t.desc.trim());
+  el.classList.toggle('is-empty', !has);
+  el.innerHTML = has ? renderMarkdown(t.desc) : esc(DESC_PLACEHOLDER);
+}
+
+/* 'text' renders the description with live links; 'input' swaps in the textarea */
+function caretToEnd(el) {
+  const r = document.createRange();
+  r.selectNodeContents(el);
+  r.collapse(false);
+  const sel = getSelection();
+  sel.removeAllRanges();
+  sel.addRange(r);
+}
+
+function setDescMode(mode) {
+  const editing = mode === 'input';
+  const rt = $('#s-desc');
+  $('#s-desc-wrap').hidden = !editing;
+  $('#s-desc-text').hidden = editing;
+  $('#s-desc-edit').hidden = editing;
+  if (editing) {
+    const t = byId(currentId);
+    rt.innerHTML = t && t.desc.trim() ? renderMarkdown(t.desc) : '';   // our own escaped HTML
+    rt.focus();
+    caretToEnd(rt);
+    syncToolbar();
+  } else {
+    renderDescText(byId(currentId));
+  }
+}
+
+function autosizeTitle() {
+  const el = $('#s-title');
+  el.style.height = 'auto';
+  // while the dialog is closed the field is display:none and scrollHeight is 0; 'auto'
+  // already renders it as one row, so leave it and let openSheet size it once visible
+  if (el.scrollHeight > 0) el.style.height = el.scrollHeight + 'px';
 }
 
 function fillSheet(t) {
   $('#s-title').value = t.title;
-  $('#s-desc').value = t.desc;
+  autosizeTitle();
+  renderDescText(t);                   // mode itself is owned by openSheet, not here
   $('#s-date').value = t.date;
   $('#s-time').value = t.time || '';
   $('#s-created').textContent = 'Task created on ' + fmtLong(new Date(t.createdAt));
@@ -830,7 +1162,23 @@ function fillSheet(t) {
 }
 
 $('#s-close').addEventListener('click', () => sheet.close());
-sheet.addEventListener('close', () => { currentId = null; disarmDelete(); });
+
+/* click the backdrop to dismiss: .sheet-scroll covers the whole interior and .sheet has
+   no padding, so e.target is the dialog itself only for the dim area around it */
+sheet.addEventListener('click', e => { if (e.target === sheet) sheet.close(); });
+
+sheet.addEventListener('close', () => {
+  save(); render();                    // flush the 300ms debounce; a fast dismiss must not lose keystrokes
+  const fresh = pendingNewId && byId(pendingNewId);
+  if (isUntouched(fresh)) {            // never really existed, so no undo toast
+    tasks.splice(tasks.findIndex(t => t.id === fresh.id), 1);
+    renumber(fresh.date);
+    save(); render();
+  }
+  pendingNewId = null;
+  currentId = null;
+  disarmDelete();
+});
 
 $('#s-status').addEventListener('click', e => {
   const btn = e.target.closest('[data-set]');
@@ -849,8 +1197,78 @@ $('#s-status').addEventListener('keydown', e => {
   if (on) on.focus();
 });
 
-$('#s-title').addEventListener('input', e => { const t = byId(currentId); if (t) { t.title = e.target.value; commit(); } });
-$('#s-desc').addEventListener('input', e => { const t = byId(currentId); if (t) { t.desc = e.target.value; commit(); } });
+$('#s-title').addEventListener('input', e => {
+  if (/[\r\n]/.test(e.target.value)) e.target.value = e.target.value.replace(/[\r\n]+/g, ' ');
+  autosizeTitle();
+  const t = byId(currentId);
+  if (t) { t.title = e.target.value; commit(); }
+});
+$('#s-title').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); }   // a title has no second line
+});
+$('#s-desc').addEventListener('input', () => {
+  const t = byId(currentId);
+  if (t) { t.desc = htmlToMarkdown($('#s-desc')); commit(); }
+});
+
+/* pasted content is reduced to text: markdown in a paste still works, markup never does */
+$('#s-desc').addEventListener('paste', e => {
+  e.preventDefault();
+  const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+  document.execCommand('insertText', false, text);
+});
+
+/* execCommand is deprecated but universally implemented, and the only way to do this
+   without a dependency. Paragraph separator set to <p> so Enter round-trips cleanly. */
+try { document.execCommand('defaultParagraphSeparator', false, 'p'); } catch (err) { /* not supported */ }
+
+const TOOLBAR_STATE = { bold: 'bold', italic: 'italic', strikeThrough: 'strikeThrough' };
+function syncToolbar() {
+  for (const btn of $('#s-rt-bar').querySelectorAll('[data-cmd]')) {
+    const q = TOOLBAR_STATE[btn.dataset.cmd];
+    let on = false;
+    if (q) { try { on = document.queryCommandState(q); } catch (err) { on = false; } }
+    btn.setAttribute('aria-pressed', String(on));
+  }
+}
+
+/* mousedown must not move focus out of the editor, or blur would end edit mode mid-format */
+$('#s-rt-bar').addEventListener('mousedown', e => { if (e.target.closest('[data-cmd]')) e.preventDefault(); });
+
+$('#s-rt-bar').addEventListener('click', e => {
+  const btn = e.target.closest('[data-cmd]');
+  if (!btn) return;
+  const rt = $('#s-desc');
+  rt.focus();
+  const cmd = btn.dataset.cmd;
+  if (cmd === 'code') {
+    const sel = String(getSelection());
+    document.execCommand('insertHTML', false, `<code>${esc(sel)}</code>`);
+  } else if (cmd === 'link') {
+    const href = safeHref(prompt('Link URL (http, https or mailto)') || '');
+    if (href) document.execCommand('createLink', false, href);
+  } else {
+    document.execCommand(cmd);
+  }
+  rt.dispatchEvent(new Event('input', { bubbles: true }));
+  syncToolbar();
+});
+
+$('#s-desc').addEventListener('keyup', syncToolbar);
+$('#s-desc').addEventListener('mouseup', syncToolbar);
+
+$('#s-desc-text').addEventListener('click', e => {
+  if (e.target.closest('a')) return;   // a link click follows the link rather than editing
+  setDescMode('input');
+});
+$('#s-desc-edit').addEventListener('click', () => setDescMode('input'));
+$('#s-desc').addEventListener('blur', () => setDescMode('text'));
+$('#s-desc').addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  e.preventDefault();                  // the first Escape leaves the field, not the dialog
+  e.stopPropagation();
+  setDescMode('text');
+});
 
 $('#s-date').addEventListener('change', e => {
   const t = byId(currentId);
@@ -879,10 +1297,11 @@ $('#s-time').addEventListener('change', e => {
 
 /* two-step delete instead of a nested confirm dialog */
 let armed = false;
+const DELETE_LABEL = 'Delete task <kbd class="kbd kbd-dark" aria-hidden="true">D</kbd>';
 function disarmDelete() {
   armed = false;
   const b = $('#s-delete');
-  b.textContent = 'Delete task';
+  b.innerHTML = DELETE_LABEL;          // textContent here would drop the shortcut chip
   b.classList.remove('is-armed');
 }
 $('#s-delete').addEventListener('click', () => {
@@ -906,12 +1325,28 @@ function showToast(msg, onAct) {
 function hideToast() { clearTimeout(undoTimer); $('#toast').classList.remove('is-on'); }
 
 /* ---------------- self-check: index.html?selftest=1 ---------------- */
-function selftest() {
+async function selftest() {
+  /* several checks create, rename and delete tasks. Running the selftest must not damage
+     real data, so snapshot the list and the store up front and restore both at the end. */
+  const snapTasks = JSON.stringify(tasks);
+  let snapRaw = null;
+  try { snapRaw = localStorage.getItem(KEY); } catch (err) { /* storage unavailable */ }
+
   const out = [];
+  /* dialog 'close' dispatches as a task, and a 0ms timer can win that race, so wait on the
+     event itself. The production handler registered first, so it has already run. */
+  const closeSheet = () => new Promise(r => {
+    if (!sheet.open) return r();
+    sheet.addEventListener('close', () => setTimeout(r, 0), { once: true });
+    sheet.close();
+  });
   let fails = 0;
+  let failDetail = null;
   const ok = (name, cond, got) => {
     if (!cond) fails++;
-    out.push(`${cond ? 'PASS' : 'FAIL'}  ${name}${cond ? '' : '   got: ' + JSON.stringify(got)}`);
+    const detail = got !== undefined ? got : failDetail;
+    failDetail = null;
+    out.push(`${cond ? 'PASS' : 'FAIL'}  ${name}${cond ? '' : '   got: ' + JSON.stringify(detail)}`);
   };
 
   // 1. the rolling weekday window
@@ -989,14 +1424,14 @@ function selftest() {
     const t = normalize({ title: 'x', date: dateKey(new Date()) }, 0);
     return t.status === 'todo' && t.time === null && t.date === dateKey(new Date());
   })());
-  ok('startNewTask jumps to today and focuses its add row', (() => {
+  ok('startNewTask jumps the board to today from an unrelated week', await (async () => {
     const saved = anchor;
-    anchor = new Date(2020, 0, 1);                       // park on an unrelated week
+    anchor = new Date(2020, 0, 1);                       // park somewhere far away
     startNewTask();
     const jumped = dateKey(weekdayWindow(anchor, 1)[0]) === snapToWeekday(dateKey(new Date()));
-    const focused = !!document.activeElement && document.activeElement.dataset.add === dateKey(new Date());
+    await closeSheet();                                  // untouched -> discarded, and never left open
     anchor = saved; render();
-    return jumped && focused;
+    return jumped;
   })());
 
   // 8. the board is Mon-Fri and nothing can land on a weekend
@@ -1074,8 +1509,273 @@ function selftest() {
     return staticOnStep;
   })());
 
-  // 11. escaping
+  // 11. modal-first creation, single-line titles, and the today border
+  ok('isUntouched only fires on a completely blank new task',
+     isUntouched({ title: '',    desc: '',     time: null,    status: 'todo'  }) === true &&
+     isUntouched({ title: '   ', desc: '',     time: null,    status: 'todo'  }) === true &&
+     isUntouched({ title: 'x',   desc: '',     time: null,    status: 'todo'  }) === false &&
+     isUntouched({ title: '',    desc: 'note', time: null,    status: 'todo'  }) === false &&
+     isUntouched({ title: '',    desc: '',     time: '09:00', status: 'todo'  }) === false &&
+     isUntouched({ title: '',    desc: '',     time: null,    status: 'doing' }) === false &&
+     isUntouched(undefined) === false);
+
+  ok('the title field cannot hold a newline', (() => {
+    currentId = null;                   // the input handler must not touch a real task
+    const el = $('#s-title'), saved = el.value;
+    el.value = 'one\ntwo';
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    const clean = el.value === 'one two';
+    el.value = saved;
+    return clean;
+  })());
+
+  ok('startNewTask opens the modal on a blank task due today, and close discards it', await (async () => {
+    const before = tasks.length;
+    startNewTask();
+    const t = byId(currentId);
+    const parts = {
+      open: sheet.open, exists: !!t, blankTitle: !!t && t.title === '',
+      todo: !!t && t.status === 'todo', dueToday: !!t && t.date === snapToWeekday(dateKey(new Date())),
+      titleFocused: document.activeElement === $('#s-title'), grewByOne: tasks.length === before + 1
+    };
+    await closeSheet();                 // the discard runs in the close handler, which is async
+    parts.discarded = tasks.length === before;
+    const bad = Object.entries(parts).filter(([, v]) => !v).map(([k]) => k);
+    if (bad.length) { failDetail = bad.join(','); return false; }
+    return true;
+  })());
+
+  ok('a new task that was given a title survives close', await (async () => {
+    const before = tasks.length;
+    startNewTask();
+    const id = currentId;
+    const el = $('#s-title');
+    el.value = 'kept by the test';
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    await closeSheet();
+    const kept = !!byId(id);
+    if (kept) {                                          // clean up after ourselves
+      const d = byId(id).date;
+      tasks.splice(tasks.findIndex(x => x.id === id), 1);
+      renumber(d); save(); render();
+    }
+    return kept && tasks.length === before;
+  })());
+
+  ok('the title field has a real height as soon as the modal opens', await (async () => {
+    const long = 'A deliberately long task title that has to wrap onto more than one line';
+    const before = tasks.length;
+    startNewTask();
+    const el = $('#s-title');
+    const emptyH = el.getBoundingClientRect().height;
+    el.value = long;
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    const grownH = el.getBoundingClientRect().height;
+    const id = currentId;
+    await closeSheet();
+    openSheet(id);                      // reopening must not collapse it back to 0
+    const reopenedH = $('#s-title').getBoundingClientRect().height;
+    await closeSheet();
+    if (byId(id)) { const d = byId(id).date; tasks.splice(tasks.findIndex(x => x.id === id), 1); renumber(d); save(); render(); }
+    const good = emptyH > 12 && grownH > emptyH && reopenedH === grownH && tasks.length === before;
+    if (!good) failDetail = { emptyH, grownH, reopenedH };
+    return good;
+  })());
+
+  ok('an untimed card renders no time row at all', (() => {
+    const base = { id: 'x', title: 'Groceries', date: '2026-09-08', status: 'todo', desc: '', order: 0, createdAt: 1 };
+    const untimed = cardHTML({ ...base, time: null }, 0);
+    const timed = cardHTML({ ...base, time: '09:00' }, 0);
+    const parts = {
+      noMetaRow: !untimed.includes('card-meta'),
+      noPlaceholderText: !/no time/.test(untimed),
+      labelSkipsTime: /aria-label="Groceries, Todo\. Open details\."/.test(untimed),
+      timedKeepsRow: timed.includes('card-meta') && timed.includes('9 AM'),
+      timedLabelHasTime: /aria-label="Groceries, 9 AM, Todo\. Open details\."/.test(timed)
+    };
+    const bad = Object.entries(parts).filter(([, v]) => !v).map(([k]) => k);
+    if (bad.length) { failDetail = bad.join(','); return false; }
+    return true;
+  })());
+
+  // 12. markdown: the one place user text becomes markup, so injection gets the most cover
+  const md = renderMarkdown;
+  ok('plain text becomes a paragraph', md('just a note') === '<p>just a note</p>', md('just a note'));
+  ok('a single newline is a line break', md('one\ntwo') === '<p>one<br>two</p>', md('one\ntwo'));
+  ok('a blank line starts a new paragraph', md('a\n\nb') === '<p>a</p><p>b</p>', md('a\n\nb'));
+
+  // --- escaping
+  ok('markup in a description is escaped, not rendered', (() => {
+    const out = md('<img src=x onerror="alert(1)"> <script>alert(2)<\/script>');
+    return !/<img/i.test(out) && !/<script/i.test(out) && out.includes('&lt;img') && out.includes('&lt;script');
+  })(), md('<img src=x onerror="alert(1)">'));
+  ok('an escaped anchor cannot smuggle an href', (() => {
+    const out = md('<a href="javascript:alert(1)">x</a>');
+    return !out.includes('<a href="javascript') && out.includes('&lt;a');
+  })());
+  ok('markup inside emphasis is still escaped', md('**<b>x</b>**') === '<p><strong>&lt;b&gt;x&lt;/b&gt;</strong></p>',
+     md('**<b>x</b>**'));
+  ok('markup inside a code span is still escaped', md('`<b>x</b>`') === '<p><code>&lt;b&gt;x&lt;/b&gt;</code></p>',
+     md('`<b>x</b>`'));
+
+  // --- href allowlist
+  ok('safeHref accepts only http, https, www and mailto', (() => {
+    const good = ['http://a.test', 'https://a.test', 'www.a.test', 'mailto:a@b.test'].every(u => safeHref(u));
+    const bad = ['javascript:alert(1)', 'JaVaScript:alert(1)', 'data:text/html,x', 'vbscript:x',
+                 ' javascript:alert(1)', 'file:///etc/passwd', './local', '#frag'].every(u => safeHref(u) === null);
+    return good && bad;
+  })());
+  ok('a markdown link with javascript: renders as plain text', (() => {
+    const out = md('[click](javascript:alert(1))');
+    return !out.includes('<a ') && !/href/i.test(out) && out.includes('[click]');
+  })(), md('[click](javascript:alert(1))'));
+  ok('a markdown link with data: renders as plain text', !md('[x](data:text/html,y)').includes('<a '));
+  ok('a bare javascript: word is never linked', !md('javascript:alert(1)').includes('<a '));
+
+  // --- links that should work
+  ok('a markdown link renders with target and noopener', (() => {
+    const out = md('[Figma](https://figma.test/f)');
+    return out.includes('href="https://figma.test/f"') && out.includes('>Figma</a>')
+      && out.includes('target="_blank"') && out.includes('rel="noopener noreferrer"');
+  })(), md('[Figma](https://figma.test/f)'));
+  ok('http and https autolink', (() => {
+    const out = md('see http://a.test and https://b.test');
+    return (out.match(/<a /g) || []).length === 2;
+  })(), md('see http://a.test and https://b.test'));
+  ok('www. autolinks with https:// prepended', md('www.example.com/x').includes('href="https://www.example.com/x"'),
+     md('www.example.com/x'));
+  ok('& in a query string survives escaping', md('https://a.test/?x=1&y=2').includes('href="https://a.test/?x=1&amp;y=2"'),
+     md('https://a.test/?x=1&y=2'));
+  ok('trailing sentence punctuation stays outside the link',
+     md('read https://a.test/x. Then stop').includes('</a>. Then stop'), md('read https://a.test/x. Then stop'));
+  ok('a bare domain is left as text', !md('node.js and index.html').includes('<a '));
+  ok('mailto in a markdown link is allowed', md('[mail](mailto:a@b.test)').includes('href="mailto:a@b.test"'));
+
+  // --- inline formatting
+  ok('bold, italic, strike and code render', (() => {
+    const out = md('**b** *i* _u_ ~~s~~ `c`');
+    return out.includes('<strong>b</strong>') && out.includes('<em>i</em>') && out.includes('<em>u</em>')
+      && out.includes('<del>s</del>') && out.includes('<code>c</code>');
+  })(), md('**b** *i* _u_ ~~s~~ `c`'));
+  ok('bold wins over italic on **', md('**x**') === '<p><strong>x</strong></p>', md('**x**'));
+  ok('code wins over emphasis inside it', md('`a *b* c`') === '<p><code>a *b* c</code></p>', md('`a *b* c`'));
+  ok('a lone asterisk is literal text', md('2 * 3 = 6') === '<p>2 * 3 = 6</p>', md('2 * 3 = 6'));
+
+  // --- blocks
+  ok('# ## ### map to h4 h5 h6 so the outline never skips', (() => {
+    const out = md('# one\n## two\n### three');
+    return out === '<h4>one</h4><h5>two</h5><h6>three</h6>';
+  })(), md('# one\n## two\n### three'));
+  ok('dashes make an unordered list', md('- a\n- b') === '<ul><li>a</li><li>b</li></ul>', md('- a\n- b'));
+  ok('numbers make an ordered list', md('1. a\n2. b') === '<ol><li>a</li><li>b</li></ol>', md('1. a\n2. b'));
+  ok('> makes a blockquote', md('> quoted') === '<blockquote>quoted</blockquote>', md('> quoted'));
+  ok('--- makes a rule', md('---') === '<hr>', md('---'));
+  ok('a fenced block keeps its content verbatim', (() => {
+    const out = md('```\n<b>not bold</b>\n**not bold**\n```');
+    return out === '<pre><code>&lt;b&gt;not bold&lt;/b&gt;\n**not bold**</code></pre>';
+  })(), md('```\n<b>x</b>\n**y**\n```'));
+  ok('an unclosed fence still terminates', md('```\nabc').includes('<pre><code>abc</code></pre>'), md('```\nabc'));
+  ok('empty input yields empty output', md('') === '' && md(null) === '' && md(undefined) === '');
+
+  // 13. round-trip: markdown -> render -> serialise -> markdown must not drift
+  const frag = html => { const tpl = document.createElement('template'); tpl.innerHTML = html; return tpl.content; };
+  const trip = src => htmlToMarkdown(frag(renderMarkdown(src)));
+
+  const CASES = [
+    'plain text',
+    'line one\nline two',
+    'para one\n\npara two',
+    '# Heading',
+    '## Sub',
+    '### Deep',
+    '**bold**',
+    '*italic*',
+    '~~struck~~',
+    '`code`',
+    'mixed **bold** and *italic* and `code`',
+    '- a\n- b',
+    '1. a\n2. b',
+    '> quoted',
+    '---',
+    '```\nliteral <b>x</b>\n```',
+    '[Label](https://a.test/x)',
+    'https://a.test/x',
+    'www.a.test/x',
+    '[mail](mailto:a@b.test)',
+    '# Title\n\ntext with **bold**\n\n- one\n- two\n\n> note\n\n```\ncode\n```'
+  ];
+  const drifted = CASES.filter(src => trip(src) !== src).map(src => ({ src, got: trip(src) }));
+  ok('every supported construct round-trips unchanged', drifted.length === 0, drifted);
+  const notIdempotent = CASES.filter(src => trip(trip(src)) !== trip(src));
+  ok('a second round-trip changes nothing further', notIdempotent.length === 0, notIdempotent);
+
+  // --- the serialiser is the sanitiser for anything pasted into the editor
+  ok('an img never survives serialisation', htmlToMarkdown(frag('<img src=x onerror="window.__x=1">')) === '',
+     htmlToMarkdown(frag('<img src=x onerror="window.__x=1">')));
+  ok('a script survives only as text', (() => {
+    const out = htmlToMarkdown(frag('<script>alert(1)<\/script>'));
+    return !out.includes('<') && out === 'alert(1)';
+  })(), htmlToMarkdown(frag('<script>alert(1)<\/script>')));
+  ok('an iframe never survives serialisation', htmlToMarkdown(frag('<iframe src="https://evil.test"></iframe>')) === '');
+  ok('a javascript: anchor degrades to its label', htmlToMarkdown(frag('<a href="javascript:alert(1)">x</a>')) === 'x',
+     htmlToMarkdown(frag('<a href="javascript:alert(1)">x</a>')));
+  ok('a data: anchor degrades to its label', htmlToMarkdown(frag('<a href="data:text/html,y">x</a>')) === 'x');
+  ok('event handlers and styles are dropped with their element', (() => {
+    const out = htmlToMarkdown(frag('<div onclick="window.__x=1" style="color:red">hi</div>'));
+    return out === 'hi' && !/onclick|style/i.test(out);
+  })(), htmlToMarkdown(frag('<div onclick="x" style="color:red">hi</div>')));
+  ok('a pasted table keeps only its text', !htmlToMarkdown(frag('<table><tr><td>cell</td></tr></table>')).includes('<'));
+  ok('a list nested inside a paragraph is not flattened (execCommand emits this)', (() => {
+    const out = htmlToMarkdown(frag('<p><ul><li>one</li><li>two</li></ul></p>'));
+    return out === '- one\n- two';
+  })(), htmlToMarkdown(frag('<p><ul><li>one</li><li>two</li></ul></p>')));
+  ok('execCommand b/i/s tags serialise like strong/em/del', (() => {
+    const out = htmlToMarkdown(frag('<p><b>b</b> <i>i</i> <s>s</s></p>'));
+    return out === '**b** *i* ~~s~~';
+  })(), htmlToMarkdown(frag('<p><b>b</b> <i>i</i> <s>s</s></p>')));
+  ok('a nested div wrapper is not double-counted', htmlToMarkdown(frag('<div><p>x</p></div>')) === 'x',
+     htmlToMarkdown(frag('<div><p>x</p></div>')));
+  ok('an empty editor serialises to empty, so a blank task still discards',
+     htmlToMarkdown(frag('')) === '' && htmlToMarkdown(frag('<p></p>')) === '' && htmlToMarkdown(frag('<p><br></p>')) === '',
+     [htmlToMarkdown(frag('<p></p>')), htmlToMarkdown(frag('<p><br></p>'))]);
+
+  ok('exactly one description box is visible in each mode', (() => {
+    const txt = $('#s-desc-text'), wrap = $('#s-desc-wrap');
+    const visible = () => [txt.offsetParent !== null, wrap.offsetParent !== null];
+    const t = tasks[0];
+    if (!t) return true;
+    const saved = t.desc;
+    t.desc = 'probe';
+    openSheet(t.id);
+    const inText = visible();
+    setDescMode('input');
+    const inInput = visible();
+    setDescMode('text');
+    sheet.close();
+    t.desc = saved;
+    const good = inText[0] && !inText[1] && !inInput[0] && inInput[1];
+    if (!good) failDetail = { textMode: inText, inputMode: inInput };
+    return good;
+  })());
+
+  ok('today has a left border only', (() => {
+    const col = document.querySelector('.col.is-today');
+    if (!col) return true;              // today may be off-window mid-test
+    return (getComputedStyle(col).boxShadow.match(/inset/g) || []).length === 1;
+  })());
+
+  // 12. escaping
   ok('esc neutralises markup', esc('<img src=x onerror=1>') === '&lt;img src=x onerror=1&gt;', esc('<img src=x onerror=1>'));
+
+  // put the world back exactly as we found it
+  if (sheet.open) sheet.close();
+  currentId = null;
+  pendingNewId = null;
+  tasks = JSON.parse(snapTasks).map(normalize);
+  try {
+    if (snapRaw === null) localStorage.removeItem(KEY); else localStorage.setItem(KEY, snapRaw);
+  } catch (err) { /* storage unavailable */ }
+  render();
 
   const head = fails === 0 ? `ALL ${out.length} CHECKS PASSED` : `${fails} of ${out.length} CHECKS FAILED`;
   const el = $('#st');
@@ -1087,7 +1787,7 @@ function selftest() {
 
 /* ---------------- boot ---------------- */
 render();
-if (new URLSearchParams(location.search).get('selftest') === '1') selftest();
+if (new URLSearchParams(location.search).get('selftest') === '1') selftest();   // async: dialog 'close' is not synchronous
 </script>
 </body>
 </html>
