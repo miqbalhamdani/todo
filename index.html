@@ -121,6 +121,14 @@ button{font:inherit;color:inherit;touch-action:manipulation}
 }
 .card-meta{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px 6px;margin-top:6px;padding-left:26px}
 .card-meta > *{min-width:0}
+/* filled-bar count is the signal; the ghost bars only show the scale */
+.prio{display:inline-flex;align-items:center;margin-left:auto;color:var(--ink)}
+.prio svg{width:12px;height:12px;display:block}
+.prio rect{fill:currentColor;opacity:.22}
+.prio[data-prio="low"] .b1,
+.prio[data-prio="medium"] .b1,.prio[data-prio="medium"] .b2,
+.prio[data-prio="high"] .b1,.prio[data-prio="high"] .b2,.prio[data-prio="high"] .b3{opacity:1}
+.seg-btn .prio{margin-left:0;color:inherit}
 .time{font-size:11px;color:var(--ink-2);white-space:nowrap}
 
 .st-btn{
@@ -397,6 +405,10 @@ button{font:inherit;color:inherit;touch-action:manipulation}
         <label class="lbl" for="s-time">Time <span style="font-weight:400;color:var(--ink-3)">(optional)</span></label>
         <input class="inp mono" type="time" id="s-time">
       </div>
+      <div class="field">
+        <span class="lbl" id="s-prio-label">Priority</span>
+        <div class="seg" id="s-priority" role="radiogroup" aria-labelledby="s-prio-label"></div>
+      </div>
     </div>
 
     <hr class="rule">
@@ -490,7 +502,9 @@ const fmtDayName = d => ['Sunday','Monday','Tuesday','Wednesday','Thursday','Fri
 function sortColumn(list) {
   return list.slice().sort((a, b) => {
     const at = a.time ? 0 : 1, bt = b.time ? 0 : 1;
-    if (at !== bt) return at - bt;
+    if (at !== bt) return at - bt;                       // timed group always first
+    const ap = prioRank(a), bp = prioRank(b);
+    if (ap !== bp) return ap - bp;                       // then high floats up inside the group
     if (at === 0 && a.time !== b.time) return a.time < b.time ? -1 : 1;
     return (a.order - b.order) || (a.createdAt - b.createdAt);
   });
@@ -509,6 +523,22 @@ const STATUS_ICON = {
   done:  '<svg class="st-icon" viewBox="0 0 20 20" aria-hidden="true"><circle class="disc" cx="10" cy="10" r="7.2"/><path class="tick" d="M6.5 10.2l2.4 2.4 4.6-4.9"/></svg>'
 };
 
+/* Priority reads as a signal-strength glyph: which bars are filled is a shape
+   difference, not a tone one, so it survives a monochrome palette. */
+const PRIORITY = {
+  low:    { label: 'Low',    rank: 2 },
+  medium: { label: 'Medium', rank: 1 },
+  high:   { label: 'High',   rank: 0 }
+};
+const PRIORITY_ORDER = ['low', 'medium', 'high'];
+/* never let an unrecognised value throw inside a sort comparator - that would blank the board */
+const prioRank = t => (PRIORITY[t && t.priority] || PRIORITY.medium).rank;
+const PRIORITY_BARS =
+  '<svg viewBox="0 0 12 12" aria-hidden="true">' +
+  '<rect class="b1" x="0" y="7" width="3" height="5" rx="1"/>' +
+  '<rect class="b2" x="4.5" y="4" width="3" height="8" rx="1"/>' +
+  '<rect class="b3" x="9" y="1" width="3" height="11" rx="1"/></svg>';
+
 /* ---------------- storage ---------------- */
 let loadFailed = false;   // a silent empty load is a bug, not a state; the selftest asserts on it
 const KEY = 'todo-board-v1';
@@ -521,6 +551,7 @@ function normalize(t, i) {
     date: snapToWeekday(/^\d{4}-\d{2}-\d{2}$/.test(t.date) ? t.date : dateKey(new Date())),
     time: /^\d{2}:\d{2}$/.test(t.time) ? t.time : null,
     status: STATUS[t.status] ? t.status : (t.done === true ? 'done' : 'todo'),
+    priority: PRIORITY[t.priority] ? t.priority : 'medium',
     desc: typeof t.desc === 'string' ? t.desc : '',
     order: Number.isFinite(t.order) ? t.order : i,
     createdAt: Number.isFinite(t.createdAt) ? t.createdAt : Date.now()
@@ -551,19 +582,19 @@ function save() {
 function seed() {                                 // first run only; delete this to start blank
   const win = weekdayWindow(new Date(), 5);       // d is an index into the opening window
   const raw = [
-    { title: 'Standup',                    d: 0, time: '09:00' },
-    { title: 'Design review',              d: 0, time: '10:00', status: 'doing' },
-    { title: 'Pay the studio invoice',     d: 0 },
+    { title: 'Standup',                    d: 0, time: '09:00', prio: 'low' },
+    { title: 'Design review',              d: 0, time: '10:00', status: 'doing', prio: 'high' },
+    { title: 'Pay the studio invoice',     d: 0, prio: 'high' },
     { title: 'Design a new dashboard for client', d: 1, time: '10:30', status: 'doing',
       desc: 'Three states to cover: empty, loading, and populated with live data.' },
     { title: 'Lunch break',                d: 1, time: '12:00', status: 'done' },
-    { title: 'Write the release notes',    d: 2, time: '13:00' },
+    { title: 'Write the release notes',    d: 2, time: '13:00', prio: 'low' },
     { title: 'Book offsite tickets',       d: 3, time: '08:45' },
     { title: 'Prepare HTML & CSS handoff', d: 4 }
   ];
   return raw.map((r, i) => normalize({
     title: r.title, date: dateKey(win[r.d]), time: r.time || null,
-    status: r.status || 'todo', desc: r.desc || '',
+    status: r.status || 'todo', priority: r.prio || 'medium', desc: r.desc || '',
     order: i, createdAt: Date.now() + i
   }, i));
 }
@@ -663,7 +694,8 @@ function colHTML(d) {
 
 function cardHTML(t, i) {
   const st = STATUS[t.status], nextSt = STATUS[st.next];
-  const label = `${t.title || 'Untitled task'}, ${t.time ? fmtTime(t.time) + ', ' : ''}${st.label}. Open details.`;
+  const pr = PRIORITY[t.priority] || PRIORITY.medium;
+  const label = `${t.title || 'Untitled task'}, ${t.time ? fmtTime(t.time) + ', ' : ''}${st.label}, ${pr.label} priority. Open details.`;
   return `<article class="card${t.status === 'done' ? ' is-done' : ''}" draggable="true" tabindex="0"
       data-id="${t.id}" style="--i:${i}" role="button" aria-label="${esc(label)}">
     <div class="card-row">
@@ -672,7 +704,10 @@ function cardHTML(t, i) {
               aria-label="Status: ${st.label}. Activate to set ${nextSt.label}.">${STATUS_ICON[t.status]}</button>
       <span class="card-title" title="${esc(t.title)}">${esc(t.title) || '<span style="color:var(--ink-3)">Untitled task</span>'}</span>
     </div>
-    ${t.time ? `<div class="card-meta"><span class="time mono">${fmtTime(t.time)}</span></div>` : ''}
+    <div class="card-meta">
+      ${t.time ? `<span class="time mono">${fmtTime(t.time)}</span>` : ''}
+      <span class="prio" data-prio="${t.priority}" title="${pr.label} priority" aria-hidden="true">${PRIORITY_BARS}</span>
+    </div>
   </article>`;
 }
 
@@ -714,6 +749,17 @@ function setStatus(id, status) {
   if (currentId === id) fillSheet(t);
 }
 
+function setPriority(id, level) {
+  const t = byId(id);
+  if (!t || !PRIORITY[level]) return;
+  t.priority = level;
+  renumber(t.date);                    // the band this task sits in just changed
+  save();
+  pendingFocus = { type: 'card', id };
+  render();
+  if (currentId === id) fillSheet(t);
+}
+
 function cycleStatus(id) {
   const t = byId(id);
   if (t) setStatus(id, STATUS[t.status].next);
@@ -739,12 +785,17 @@ function moveDay(id, delta) {
 function reorder(id, delta) {
   const t = byId(id); if (!t || t.time) return false;     // timed cards are ordered by their time
   const untimed = inColumn(t.date).filter(x => !x.time);
-  const i = untimed.findIndex(x => x.id === id);
+  // priority outranks `order`, so moving across bands would do nothing on screen;
+  // shuffle within the band and stitch it back into place instead
+  const band = untimed.filter(x => x.priority === t.priority);
+  const i = band.findIndex(x => x.id === id);
   const j = i + delta;
-  if (i < 0 || j < 0 || j >= untimed.length) return false;
-  untimed.splice(j, 0, untimed.splice(i, 1)[0]);
+  if (i < 0 || j < 0 || j >= band.length) return false;
+  band.splice(j, 0, band.splice(i, 1)[0]);
+  let k = 0;
+  const merged = untimed.map(x => x.priority === t.priority ? band[k++] : x);
   const timedCount = inColumn(t.date).length - untimed.length;
-  untimed.forEach((x, k) => { x.order = timedCount + k; });
+  merged.forEach((x, n) => { x.order = timedCount + n; });
   save();
   pendingFocus = { type: 'card', id };
   render();
@@ -843,7 +894,11 @@ grid.addEventListener('keydown', e => {
 
 function announceOrderLimit(id) {
   const t = byId(id);
-  if (t && t.time) showToast('Timed tasks are ordered by their time — change the time to move it', null);
+  if (!t) return;
+  if (t.time) { showToast('Timed tasks are ordered by their time — change the time to move it', null); return; }
+  const untimed = inColumn(t.date).filter(x => !x.time);
+  if (untimed.some(x => x.priority !== t.priority))
+    showToast('Reordering stays inside a priority band — change the priority to move further', null);
 }
 
 /* drag: native HTML5 DnD (its own movement threshold, so a click never reads as a drag) */
@@ -1159,6 +1214,10 @@ function fillSheet(t) {
   $('#s-status').innerHTML = STATUS_ORDER.map(k => `<button class="seg-btn${k === t.status ? ' is-on' : ''}"
       type="button" data-set="${k}" role="radio" aria-checked="${k === t.status}"
       tabindex="${k === t.status ? 0 : -1}">${STATUS_ICON[k]}${STATUS[k].label}</button>`).join('');
+  $('#s-priority').innerHTML = PRIORITY_ORDER.map(k => `<button class="seg-btn${k === t.priority ? ' is-on' : ''}"
+      type="button" data-set="${k}" role="radio" aria-checked="${k === t.priority}"
+      tabindex="${k === t.priority ? 0 : -1}" aria-label="${PRIORITY[k].label} priority"
+      ><span class="prio" data-prio="${k}">${PRIORITY_BARS}</span>${PRIORITY[k].label}</button>`).join('');
 }
 
 $('#s-close').addEventListener('click', () => sheet.close());
@@ -1183,6 +1242,22 @@ sheet.addEventListener('close', () => {
 $('#s-status').addEventListener('click', e => {
   const btn = e.target.closest('[data-set]');
   if (btn && currentId) setStatus(currentId, btn.dataset.set);
+});
+
+$('#s-priority').addEventListener('click', e => {
+  const btn = e.target.closest('[data-set]');
+  if (btn && currentId) setPriority(currentId, btn.dataset.set);
+});
+
+$('#s-priority').addEventListener('keydown', e => {
+  if (!currentId || !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
+  e.preventDefault();
+  const t = byId(currentId); if (!t) return;
+  const step = (e.key === 'ArrowLeft' || e.key === 'ArrowUp') ? -1 : 1;
+  const i = PRIORITY_ORDER.indexOf(t.priority);
+  setPriority(currentId, PRIORITY_ORDER[(i + step + PRIORITY_ORDER.length) % PRIORITY_ORDER.length]);
+  const on = $('#s-priority').querySelector('.is-on');
+  if (on) on.focus();
 });
 
 /* arrow keys move between radios, as a radiogroup is expected to */
@@ -1582,16 +1657,18 @@ async function selftest() {
     return good;
   })());
 
-  ok('an untimed card renders no time row at all', (() => {
-    const base = { id: 'x', title: 'Groceries', date: '2026-09-08', status: 'todo', desc: '', order: 0, createdAt: 1 };
+  ok('an untimed card shows no time, but keeps the meta row for the priority glyph', (() => {
+    const base = { id: 'x', title: 'Groceries', date: '2026-09-08', status: 'todo',
+                   priority: 'medium', desc: '', order: 0, createdAt: 1 };
     const untimed = cardHTML({ ...base, time: null }, 0);
     const timed = cardHTML({ ...base, time: '09:00' }, 0);
     const parts = {
-      noMetaRow: !untimed.includes('card-meta'),
       noPlaceholderText: !/no time/.test(untimed),
-      labelSkipsTime: /aria-label="Groceries, Todo\. Open details\."/.test(untimed),
-      timedKeepsRow: timed.includes('card-meta') && timed.includes('9 AM'),
-      timedLabelHasTime: /aria-label="Groceries, 9 AM, Todo\. Open details\."/.test(timed)
+      noTimeSpan: !/class="time/.test(untimed),
+      metaRowKeptForGlyph: untimed.includes('card-meta') && untimed.includes('class="prio"'),
+      labelSkipsTime: /aria-label="Groceries, Todo, Medium priority\. Open details\."/.test(untimed),
+      timedShowsTime: timed.includes('class="time') && timed.includes('9 AM'),
+      timedLabelHasTime: /aria-label="Groceries, 9 AM, Todo, Medium priority\. Open details\."/.test(timed)
     };
     const bad = Object.entries(parts).filter(([, v]) => !v).map(([k]) => k);
     if (bad.length) { failDetail = bad.join(','); return false; }
@@ -1756,6 +1833,59 @@ async function selftest() {
     const good = inText[0] && !inText[1] && !inInput[0] && inInput[1];
     if (!good) failDetail = { textMode: inText, inputMode: inInput };
     return good;
+  })());
+
+  // 14. priority
+  ok('a task with no priority defaults to Medium', normalize({}, 0).priority === 'medium', normalize({}, 0).priority);
+  ok('an unknown priority falls back to Medium', normalize({ priority: 'urgent' }, 0).priority === 'medium');
+  ok('a valid priority is preserved', PRIORITY_ORDER.every(k => normalize({ priority: k }, 0).priority === k));
+  ok('every priority has a label and a rank', PRIORITY_ORDER.length === 3 &&
+     PRIORITY_ORDER.every(k => PRIORITY[k] && PRIORITY[k].label && Number.isFinite(PRIORITY[k].rank)));
+  ok('high outranks medium outranks low', PRIORITY.high.rank < PRIORITY.medium.rank && PRIORITY.medium.rank < PRIORITY.low.rank);
+  ok('a task missing a priority sorts as medium instead of throwing', (() => {
+    const bare = [{ id: 'x', time: null, order: 0, createdAt: 1 }, { id: 'y', time: null, order: 1, createdAt: 2 }];
+    return sortColumn(bare).map(t => t.id).join('') === 'xy' && prioRank({}) === PRIORITY.medium.rank;
+  })());
+
+  const mk = (id, o) => normalize({ id, date: '2026-09-08', ...o }, 0);
+  ok('high floats to the top of the timed group', (() => {
+    const out = sortColumn([
+      mk('a', { time: '09:00', priority: 'low' }),
+      mk('b', { time: '17:00', priority: 'high' }),
+      mk('c', { time: '11:00', priority: 'medium' })
+    ]).map(t => t.id).join('');
+    return out === 'bca';
+  })(), sortColumn([mk('a', { time: '09:00', priority: 'low' }), mk('b', { time: '17:00', priority: 'high' })]).map(t => t.id).join(''));
+
+  ok('timed still beats untimed regardless of priority', (() => {
+    const out = sortColumn([
+      mk('u', { time: null, priority: 'high' }),
+      mk('t', { time: '17:00', priority: 'low' })
+    ]).map(t => t.id).join('');
+    return out === 'tu';
+  })(), sortColumn([mk('u', { time: null, priority: 'high' }), mk('t', { time: '17:00', priority: 'low' })]).map(t => t.id).join(''));
+
+  ok('same priority still sorts by clock then order', (() => {
+    const timed = sortColumn([
+      mk('late', { time: '17:00', priority: 'medium' }),
+      mk('early', { time: '09:00', priority: 'medium' })
+    ]).map(t => t.id).join('');
+    const untimed = sortColumn([
+      mk('second', { time: null, priority: 'medium', order: 5 }),
+      mk('first', { time: null, priority: 'medium', order: 1 })
+    ]).map(t => t.id).join('');
+    return timed === 'earlylate' && untimed === 'firstsecond';
+  })());
+
+  ok('the card always carries a priority glyph and states it in the label', (() => {
+    const html = cardHTML(mk('x', { title: 'T', time: null, priority: 'high' }), 0);
+    return html.includes('data-prio="high"') && html.includes('card-meta')
+      && /aria-label="[^"]*High priority\. Open details\."/.test(html);
+  })(), cardHTML(mk('x', { title: 'T', time: null, priority: 'high' }), 0).match(/aria-label="[^"]*"/));
+
+  ok('the glyph is hidden from screen readers, since the card label says it', (() => {
+    const html = cardHTML(mk('x', { title: 'T', priority: 'low' }), 0);
+    return /<span class="prio"[^>]*aria-hidden="true"/.test(html);
   })());
 
   ok('today has a left border only', (() => {
