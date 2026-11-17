@@ -1,0 +1,6 @@
+{
+  "name": "todo",
+  "compatibility_date": "2025-09-01",
+  "assets": { "directory": "./" },
+  "routes": [{ "pattern": "todo.jadigampang.com", "custom_domain": true }]
+}
